@@ -20,7 +20,10 @@ from data_generator import MotionDataGenerator
 from preprocessing import SensorDataProcessor
 
 
-app = Flask(__name__)
+_PROJECT_ROOT = Path(__file__).parent.parent
+app = Flask(__name__,
+            template_folder=str(_PROJECT_ROOT / "templates"),
+            static_folder=str(_PROJECT_ROOT / "static"))
 app.config["SECRET_KEY"] = "motion-analysis-secret"
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
