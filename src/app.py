@@ -25,6 +25,17 @@ app = Flask(__name__,
             template_folder=str(_PROJECT_ROOT / "templates"),
             static_folder=str(_PROJECT_ROOT / "static"))
 app.config["SECRET_KEY"] = "motion-analysis-secret"
+
+
+@app.after_request
+def disable_cache(response):
+    """禁用浏览器缓存，确保每次刷新获取最新页面"""
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # 全局变量：加载预训练模型和处理器

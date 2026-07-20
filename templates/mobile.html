@@ -296,9 +296,30 @@
             if (navigator.geolocation) {
                 gpsWatchId = navigator.geolocation.watchPosition(
                     handleGPS,
-                    (err) => console.log('GPS error:', err.message),
-                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+                    (err) => {
+                        const gpsEl = document.getElementById('gpsCoord');
+                        switch(err.code) {
+                            case 1: // PERMISSION_DENIED
+                                gpsEl.textContent = 'GPS权限被拒绝 — 请在浏览器设置中允许位置权限';
+                                gpsEl.style.color = '#e74c3c';
+                                break;
+                            case 2: // POSITION_UNAVAILABLE
+                                gpsEl.textContent = 'GPS信号不可用 — 请到室外或窗口开阔处';
+                                gpsEl.style.color = '#f39c12';
+                                break;
+                            case 3: // TIMEOUT
+                                gpsEl.textContent = 'GPS定位超时 — 重试中...';
+                                gpsEl.style.color = '#f39c12';
+                                break;
+                            default:
+                                gpsEl.textContent = 'GPS错误: ' + err.message;
+                        }
+                    },
+                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
                 );
+            } else {
+                document.getElementById('gpsCoord').textContent = '浏览器不支持GPS';
+                document.getElementById('gpsCoord').style.color = '#e74c3c';
             }
 
             isStreaming = true;
@@ -383,8 +404,10 @@
             const speed = position.coords.speed || 0;
             const heading = position.coords.heading || 0;
 
-            document.getElementById('gpsCoord').textContent =
+            const el = document.getElementById('gpsCoord');
+            el.textContent =
                 `${lat.toFixed(6)}, ${lon.toFixed(6)} | 速度: ${speed.toFixed(1)} m/s`;
+            el.style.color = '#27ae60';
 
             socket.emit('mobile_gps_update', {
                 lat: lat,
