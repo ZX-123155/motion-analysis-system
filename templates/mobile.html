@@ -211,7 +211,12 @@
 
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
-        const socket = io();
+        // 快速断开检测：缩短心跳间隔
+        const socket = io({
+            pingInterval: 3000,     // 3秒发一次心跳
+            pingTimeout: 5000,      // 5秒无响应判定断开
+            reconnection: false,    // 不自动重连，断开就断开
+        });
         let isStreaming = false;
         let sampleCount = 0;
         let motionPermissionGranted = false;
@@ -233,8 +238,14 @@
         });
 
         socket.on('disconnect', () => {
-            updateStatus('disconnected', '连接断开');
+            updateStatus('disconnected', '服务器已断开');
+            showToast('⚠ 服务器连接已断开！请重启app.py', 'error');
             if (isStreaming) stopStreaming();
+        });
+
+        socket.on('connect_error', () => {
+            updateStatus('disconnected', '连接失败');
+            showToast('无法连接服务器，请确认app.py是否运行', 'error');
         });
 
         function updateStatus(state, text) {
