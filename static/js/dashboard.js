@@ -24,16 +24,16 @@ const state = {
     },
     activityIcons: {
         walking: '\u{1F6B6}',
+        stationary: '\u{1F6D1}',
         running: '\u{1F3C3}',
         jumping: '\u{29D7}',
-        high_knees: '\u{1F1F7}',
         unknown: '\u2753',
     },
     activityNames: {
         walking: '走路 Walking',
+        stationary: '静止 Stationary',
         running: '跑步 Running',
         jumping: '跳跃 Jumping',
-        high_knees: '高抬腿 High Knees',
         unknown: '等待数据...',
     },
 };

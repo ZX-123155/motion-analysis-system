@@ -139,7 +139,7 @@ def api_status():
     model_loaded = classifier is not None
     return jsonify({
         "model_loaded": model_loaded,
-        "activities": ["walking", "running"],
+        "activities": ["walking", "stationary", "running", "jumping"],
         "stream_running": stream_state["running"],
     })
 
@@ -222,7 +222,7 @@ def handle_start_stream(data=None):
     stream_state["buffer"] = []
     stream_state["history"] = []
 
-    activity_sequence = data.get("activity_sequence", ["walking", "running"]) if data else ["walking", "running"]
+    activity_sequence = data.get("activity_sequence", ["walking", "stationary", "running", "jumping"]) if data else ["walking", "stationary", "running", "jumping"]
     emit("status", {"message": f"Stream started with sequence: {activity_sequence}"})
 
     # 后台线程生成数据

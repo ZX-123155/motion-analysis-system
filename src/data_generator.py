@@ -13,7 +13,7 @@ class MotionDataGenerator:
     """模拟人体运动的IMU和GNSS数据"""
 
     SAMPLE_RATE = 50  # Hz
-    ACTIVITIES = ["walking", "running"]
+    ACTIVITIES = ["walking", "stationary", "running", "jumping"]
 
     def __init__(self, duration_sec=10, seed=42):
         self.duration = duration_sec
@@ -58,6 +58,20 @@ class MotionDataGenerator:
         gyro_z = self._add_noise(gyro_z, snr_db=25)
 
         return self._build_df(acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, "walking")
+
+    def generate_stationary(self):
+        """静止：加速度接近重力(仅z轴~9.8)，角速度接近零，方差极小"""
+        # 加速度：仅重力分量 + 极小的呼吸/微动噪声
+        acc_x = self.rng.normal(0, 0.02, self.n_samples)
+        acc_y = self.rng.normal(0, 0.02, self.n_samples)
+        acc_z = 9.8 + self.rng.normal(0, 0.03, self.n_samples)
+
+        # 角速度：几乎为零，极小的手部微颤
+        gyro_x = self.rng.normal(0, 0.005, self.n_samples)
+        gyro_y = self.rng.normal(0, 0.005, self.n_samples)
+        gyro_z = self.rng.normal(0, 0.005, self.n_samples)
+
+        return self._build_df(acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, "stationary")
 
     def generate_running(self):
         """跑步：约2.5-3 Hz的步频，加速度幅值大，冲击特征明显"""
