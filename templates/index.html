@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运动数据分析系统 - Motion Analysis System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部状态栏 -->
+        <header class="top-bar">
+            <div class="logo">
+                <span class="logo-icon">&#9889;</span>
+                <h1>运动数据分析系统</h1>
+            </div>
+            <div class="status-indicators">
+                <span id="stream-status" class="status-dot offline"></span>
+                <span id="stream-text">未连接</span>
+                <span id="model-status" class="status-label"></span>
+            </div>
+        </header>
+
+        <!-- 主面板 -->
+        <main class="dashboard">
+            <!-- 左侧：运动识别面板 -->
+            <section class="panel activity-panel">
+                <h2>运动识别</h2>
+                <div class="activity-display">
+                    <div class="activity-icon" id="activity-icon">&#10067;</div>
+                    <div class="activity-name" id="activity-name">等待数据...</div>
+                    <div class="confidence-bar-container">
+                        <div class="confidence-bar" id="confidence-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="confidence-text" id="confidence-text">置信度: --</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">步频</div>
+                        <div class="stat-value" id="stat-step-freq">--</div>
+                        <div class="stat-unit">Hz</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">速度</div>
+                        <div class="stat-value" id="stat-speed">--</div>
+                        <div class="stat-unit">m/s</div>
+                    </div>
+                </div>
+
+                <!-- 模型性能 -->
+                <div class="model-perf" id="model-perf" style="display:none">
+                    <h3>模型性能</h3>
+                    <div id="model-metrics"></div>
+                </div>
+            </section>
+
+            <!-- 中间：传感器波形 -->
+            <section class="panel chart-panel">
+                <h2>传感器波形</h2>
+                <div class="chart-tabs">
+                    <button class="tab-btn active" data-tab="acc">加速度计</button>
+                    <button class="tab-btn" data-tab="gyro">陀螺仪</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="sensor-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- 右侧：轨迹地图 -->
+            <section class="panel map-panel">
+                <h2>运动轨迹</h2>
+                <div id="map"></div>
+                <div class="map-coords" id="map-coords">
+                    等待 GPS 数据...
+                </div>
+            </section>
+        </main>
+
+        <!-- 底部控制栏 -->
+        <footer class="control-bar">
+            <button id="btn-start" class="btn btn-primary" onclick="startStream()">
+                &#9654; 开始实时数据流
+            </button>
+            <button id="btn-stop" class="btn btn-danger" onclick="stopStream()" disabled>
+                &#9632; 停止
+            </button>
+            <select id="activity-select" class="select-control">
+                <option value="walking,running,jumping,high_knees">全部运动类型</option>
+                <option value="walking">仅走路</option>
+                <option value="running">仅跑步</option>
+                <option value="jumping">仅跳跃</option>
+                <option value="high_knees">仅高抬腿</option>
+                <option value="walking,running">走路 + 跑步</option>
+            </select>
+            <span class="data-counter" id="data-counter">数据点: 0</span>
+        </footer>
+    </div>
+
+    <!-- 消息提示 -->
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
