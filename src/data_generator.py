@@ -13,7 +13,7 @@ class MotionDataGenerator:
     """模拟人体运动的IMU和GNSS数据"""
 
     SAMPLE_RATE = 50  # Hz
-    ACTIVITIES = ["walking", "running", "jumping", "high_knees"]
+    ACTIVITIES = ["walking", "running"]
 
     def __init__(self, duration_sec=10, seed=42):
         self.duration = duration_sec
