@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>运动数据采集 - Mobile Sensor v4</title>
+    <title>运动数据采集 - Mobile Sensor v5</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -157,7 +157,7 @@
 <body>
     <div class="header">
         <h1>📱 运动传感器采集</h1>
-        <p>通过手机浏览器实时采集IMU+GPS数据 <span style="color:#27ae60;font-weight:700">v4</span></p>
+        <p>通过手机浏览器实时采集IMU+GPS数据 <span style="color:#27ae60;font-weight:700">v5</span></p>
         <div class="status-badge status-disconnected" id="statusBadge">未连接</div>
     </div>
 
@@ -181,14 +181,22 @@
             <div class="value z" id="accZ">0.00</div>
         </div>
         <div class="sensor-card">
+            <div class="label">角速度 X</div>
+            <div class="value x" id="gyroX">0.00</div>
+        </div>
+        <div class="sensor-card">
+            <div class="label">角速度 Y</div>
+            <div class="value y" id="gyroY">0.00</div>
+        </div>
+        <div class="sensor-card">
             <div class="label">角速度 Z</div>
             <div class="value z" id="gyroZ">0.00</div>
         </div>
     </div>
 
     <div class="gps-info" id="gpsInfo">
-        <div class="label">📍 GPS 位置</div>
-        <div class="coord" id="gpsCoord">等待定位...</div>
+        <div class="label">📍 GPS 位置（默认：湾谷科技园A8）</div>
+        <div class="coord" id="gpsCoord">31.338200, 121.509800</div>
     </div>
 
     <div class="conn-info">
@@ -219,12 +227,26 @@
 
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
-        // 快速断开检测：缩短心跳间隔
+        // 快速断开检测：服务端心跳 + 客户端超时
         const socket = io({
-            pingInterval: 3000,     // 3秒发一次心跳
-            pingTimeout: 5000,      // 5秒无响应判定断开
-            reconnection: false,    // 不自动重连，断开就断开
+            pingInterval: 3000,
+            pingTimeout: 5000,
+            reconnection: false,
         });
+
+        let serverHeartbeatTimer = null;
+        const HEARTBEAT_TIMEOUT = 5000; // 5秒没收到心跳就判定断开
+
+        function resetServerHeartbeat() {
+            if (serverHeartbeatTimer) clearTimeout(serverHeartbeatTimer);
+            serverHeartbeatTimer = setTimeout(() => {
+                // 超时没收到心跳，服务器挂了
+                updateStatus('disconnected', '服务器已断开');
+                showToast('⚠ 服务器已断开！请重启app.py', 'error');
+                if (isStreaming) stopStreaming();
+                socket.disconnect();
+            }, HEARTBEAT_TIMEOUT);
+        }
         let isStreaming = false;
         let sampleCount = 0;
         let motionPermissionGranted = false;
@@ -237,6 +259,12 @@
         // WebSocket事件
         socket.on('connect', () => {
             updateStatus('connecting', '已连接服务器');
+            resetServerHeartbeat();
+        });
+
+        // 服务端心跳 — 超时未收到则判定断开
+        socket.on('server_heartbeat', () => {
+            resetServerHeartbeat();
         });
 
         socket.on('mobile_status', (data) => {
@@ -246,6 +274,7 @@
         });
 
         socket.on('disconnect', () => {
+            if (serverHeartbeatTimer) clearTimeout(serverHeartbeatTimer);
             updateStatus('disconnected', '服务器已断开');
             showToast('⚠ 服务器连接已断开！请重启app.py', 'error');
             if (isStreaming) stopStreaming();
@@ -388,6 +417,9 @@
             document.getElementById('accX').textContent = acc.x ? acc.x.toFixed(2) : '0.00';
             document.getElementById('accY').textContent = acc.y ? acc.y.toFixed(2) : '0.00';
             document.getElementById('accZ').textContent = acc.z ? acc.z.toFixed(2) : '0.00';
+            // rotationRate: alpha=z, beta=x, gamma=y (deg/s)
+            document.getElementById('gyroX').textContent = rot.beta  ? rot.beta.toFixed(2)  : '0.00';
+            document.getElementById('gyroY').textContent = rot.gamma ? rot.gamma.toFixed(2) : '0.00';
             document.getElementById('gyroZ').textContent = rot.alpha ? rot.alpha.toFixed(2) : '0.00';
 
             // 控制发送频率
@@ -395,14 +427,14 @@
             if (now - lastSendTime < SEND_INTERVAL) return;
             lastSendTime = now;
 
-            // 发送到服务器
+            // 发送到服务器（旋转角度deg/s转rad/s）
             socket.emit('mobile_sensor_data', {
                 acc_x: acc.x || 0,
                 acc_y: acc.y || 0,
                 acc_z: acc.z || 0,
-                gyro_x: rot.beta ? (rot.beta * Math.PI / 180) : 0,   // deg/s -> rad/s
-                gyro_y: rot.gamma ? (rot.gamma * Math.PI / 180) : 0,
-                gyro_z: rot.alpha ? (rot.alpha * Math.PI / 180) : 0,
+                gyro_x: (rot.beta  || 0) * Math.PI / 180,
+                gyro_y: (rot.gamma || 0) * Math.PI / 180,
+                gyro_z: (rot.alpha || 0) * Math.PI / 180,
                 timestamp: now / 1000,
             });
 

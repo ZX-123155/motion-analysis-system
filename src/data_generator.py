@@ -189,7 +189,7 @@ class MotionDataGenerator:
         df["gyro_magnitude"] = np.sqrt(gyro_x**2 + gyro_y**2 + gyro_z**2)
         return df
 
-    def generate_trajectory(self, activity="walking", start_lat=39.9042, start_lon=116.4074):
+    def generate_trajectory(self, activity="walking", start_lat=31.3382, start_lon=121.5098):
         """生成模拟GNSS轨迹数据"""
         n = self.n_samples
         dt = 1.0 / self.SAMPLE_RATE

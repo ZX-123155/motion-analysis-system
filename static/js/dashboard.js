@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ====== 地图初始化 ======
 function initMap() {
     state.map = L.map('map', {
-        center: [39.9042, 116.4074],
+        center: [31.3382, 121.5098],
         zoom: 16,
         zoomControl: true,
     });

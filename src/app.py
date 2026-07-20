@@ -38,6 +38,19 @@ def disable_cache(response):
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
+
+def server_heartbeat_thread():
+    """后台线程：每2秒发送心跳，用于客户端快速检测服务器断开"""
+    while True:
+        time.sleep(2)
+        try:
+            socketio.emit("server_heartbeat")
+        except Exception:
+            break
+
+heartbeat_thread = threading.Thread(target=server_heartbeat_thread, daemon=True)
+heartbeat_thread.start()
+
 # 全局变量：加载预训练模型和处理器
 MODEL_DIR = Path(__file__).parent.parent / "models"
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -48,12 +61,16 @@ label_encoder = None
 feature_names = None
 processor = None
 
+# 默认位置：上海杨浦区湾谷科技园A8
+DEFAULT_LAT = 31.3382
+DEFAULT_LON = 121.5098
+
 # 实时数据状态
 stream_state = {
     "running": False,
     "current_activity": "unknown",
-    "lat": 39.9042,
-    "lon": 116.4074,
+    "lat": DEFAULT_LAT,
+    "lon": DEFAULT_LON,
     "step_freq": 0,
     "speed": 0,
     "confidence": 0,
@@ -65,13 +82,13 @@ stream_state = {
 mobile_state = {
     "connected": False,
     "buffer": [],
-    "buffer_size": 128,     # 128个采样点做一次预测
-    "overlap": 64,          # 50%重叠
-    "lat": None,
-    "lon": None,
+    "buffer_size": 128,
+    "overlap": 64,
+    "lat": DEFAULT_LAT,
+    "lon": DEFAULT_LON,
     "sample_count": 0,
     "last_prediction_time": 0,
-    "prediction_cooldown": 1.0,  # 每秒最多预测一次
+    "prediction_cooldown": 1.0,
 }
 
 
