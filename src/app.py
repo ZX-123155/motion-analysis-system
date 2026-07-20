@@ -50,6 +50,19 @@ stream_state = {
     "history": [],
 }
 
+# 手机端真实数据状态
+mobile_state = {
+    "connected": False,
+    "buffer": [],
+    "buffer_size": 128,     # 128个采样点做一次预测
+    "overlap": 64,          # 50%重叠
+    "lat": None,
+    "lon": None,
+    "sample_count": 0,
+    "last_prediction_time": 0,
+    "prediction_cooldown": 1.0,  # 每秒最多预测一次
+}
+
 
 def load_model():
     """加载预训练模型"""
@@ -101,6 +114,12 @@ def predict_activity(sensor_data_df):
 def index():
     """主页"""
     return render_template("index.html")
+
+
+@app.route("/mobile")
+def mobile():
+    """手机端传感器采集页面"""
+    return render_template("mobile.html")
 
 
 @app.route("/api/status")
@@ -315,6 +334,144 @@ def handle_predict_single(data):
         emit("error", {"message": str(e)})
 
 
+# ====== 手机端真实传感器数据接收 ======
+
+@socketio.on("mobile_connect")
+def handle_mobile_connect():
+    """手机端连接"""
+    mobile_state["connected"] = True
+    mobile_state["buffer"] = []
+    mobile_state["sample_count"] = 0
+    mobile_state["lat"] = None
+    mobile_state["lon"] = None
+    print("[Mobile] Phone connected - real sensor streaming active")
+    # 通知所有仪表盘客户端：真实数据源已连接
+    socketio.emit("status", {"message": "手机传感器已连接，接收真实数据中..."})
+    socketio.emit("data_source", {"source": "mobile"})
+    emit("mobile_status", {"status": "connected"})
+
+
+@socketio.on("mobile_disconnect")
+def handle_mobile_disconnect():
+    """手机端断开"""
+    mobile_state["connected"] = False
+    mobile_state["buffer"] = []
+    print("[Mobile] Phone disconnected")
+    socketio.emit("status", {"message": "手机传感器已断开"})
+    socketio.emit("data_source", {"source": "simulated"})
+
+
+@socketio.on("mobile_sensor_data")
+def handle_mobile_sensor_data(data):
+    """接收手机端原始传感器数据包"""
+    if not mobile_state["connected"]:
+        return
+
+    # 数据包格式: { acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, lat, lon, speed, heading }
+    try:
+        acc_x = float(data.get("acc_x", 0))
+        acc_y = float(data.get("acc_y", 0))
+        acc_z = float(data.get("acc_z", 0))
+        gyro_x = float(data.get("gyro_x", 0))
+        gyro_y = float(data.get("gyro_y", 0))
+        gyro_z = float(data.get("gyro_z", 0))
+        ts = data.get("timestamp", time.time())
+    except (ValueError, TypeError) as e:
+        print(f"[Mobile] Invalid sensor data: {e}")
+        return
+
+    # 更新GPS
+    if data.get("lat") is not None and data.get("lon") is not None:
+        mobile_state["lat"] = float(data["lat"])
+        mobile_state["lon"] = float(data["lon"])
+
+    # 计算合成量
+    acc_mag = np.sqrt(acc_x**2 + acc_y**2 + acc_z**2)
+    gyro_mag = np.sqrt(gyro_x**2 + gyro_y**2 + gyro_z**2)
+
+    # 加入到缓冲区
+    sample = {
+        "timestamp": ts,
+        "acc_x": acc_x, "acc_y": acc_y, "acc_z": acc_z,
+        "gyro_x": gyro_x, "gyro_y": gyro_y, "gyro_z": gyro_z,
+        "acc_magnitude": acc_mag, "gyro_magnitude": gyro_mag,
+    }
+    mobile_state["buffer"].append(sample)
+    mobile_state["sample_count"] += 1
+
+    # 实时转发传感器数据给仪表盘（缩采样，每2个点发1个）
+    if mobile_state["sample_count"] % 2 == 0:
+        socketio.emit("sensor_data", {
+            "acc_x": [acc_x], "acc_y": [acc_y], "acc_z": [acc_z],
+            "gyro_x": [gyro_x], "gyro_y": [gyro_y], "gyro_z": [gyro_z],
+            "timestamps": [ts],
+        })
+
+    # 发送GPS更新
+    if mobile_state["lat"] is not None:
+        speed = float(data.get("speed", 0)) if data.get("speed") is not None else 0
+        socketio.emit("trajectory_update", {
+            "lat": mobile_state["lat"],
+            "lon": mobile_state["lon"],
+            "speed": speed,
+        })
+
+    # 缓冲区累积足够时进行预测
+    buffer_len = len(mobile_state["buffer"])
+    if buffer_len >= mobile_state["buffer_size"]:
+        # 检查冷却时间
+        now = time.time()
+        if now - mobile_state["last_prediction_time"] < mobile_state["prediction_cooldown"]:
+            return
+
+        mobile_state["last_prediction_time"] = now
+
+        # 取最近128个点
+        window_data = mobile_state["buffer"][-mobile_state["buffer_size"]:]
+        window_df = pd.DataFrame(window_data)
+
+        # 预测
+        activity, confidence = predict_activity(window_df)
+
+        # 步频估计
+        step_freq = 0
+        if len(window_data) >= 64:
+            acc_mag_vals = np.array([s["acc_magnitude"] for s in window_data])
+            n = len(acc_mag_vals)
+            fft_vals = np.abs(fft(acc_mag_vals))[:n // 2]
+            freqs = fftfreq(n, 1 / 50)[:n // 2]
+            mask = (freqs >= 0.5) & (freqs <= 5.0)
+            if np.any(mask):
+                step_freq = float(freqs[mask][np.argmax(fft_vals[mask])])
+
+        # 广播给所有仪表盘客户端
+        socketio.emit("activity_update", {
+            "activity": activity,
+            "confidence": confidence,
+            "step_freq": step_freq,
+            "speed": float(data.get("speed", 0)) if data.get("speed") else 0,
+        })
+
+        # 打印调试
+        print(f"[Mobile] Predicted: {activity} (conf: {confidence:.2f}) | step_freq: {step_freq:.2f} Hz | buffer: {buffer_len}")
+
+        # 缩小缓冲保留50%重叠
+        mobile_state["buffer"] = mobile_state["buffer"][-mobile_state["buffer_size"] // 2:]
+
+
+@socketio.on("mobile_gps_update")
+def handle_mobile_gps(data):
+    """手机端GPS位置更新"""
+    if data.get("lat") and data.get("lon"):
+        mobile_state["lat"] = float(data["lat"])
+        mobile_state["lon"] = float(data["lon"])
+        socketio.emit("trajectory_update", {
+            "lat": mobile_state["lat"],
+            "lon": mobile_state["lon"],
+            "speed": float(data.get("speed", 0)),
+        })
+
+
 if __name__ == "__main__":
     model_loaded = load_model()
     if not model_loaded:
@@ -322,7 +479,8 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 50)
     print("  Motion Analysis System")
-    print("  http://localhost:5000")
+    print("  仪表盘: http://localhost:5000")
+    print("  手机端: http://<电脑IP>:5000/mobile")
     print("=" * 50 + "\n")
 
     socketio.run(app, host="0.0.0.0", port=5000, debug=False, allow_unsafe_werkzeug=True)

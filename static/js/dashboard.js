@@ -184,6 +184,16 @@ function connectSocket() {
     state.socket.on('status', (data) => showToast(data.message, 'info'));
     state.socket.on('error', (data) => showToast(data.message, 'error'));
     state.socket.on('warning', (data) => showToast(data.message, 'warning'));
+    state.socket.on('data_source', (data) => {
+        const el = document.getElementById('data-source');
+        if (data.source === 'mobile') {
+            el.textContent = '📱 手机实时数据';
+            el.style.color = '#27ae60';
+        } else {
+            el.textContent = '💻 模拟数据';
+            el.style.color = '#7f8c8d';
+        }
+    });
 }
 
 // 处理传感器数据
