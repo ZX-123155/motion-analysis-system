@@ -196,12 +196,17 @@
     <div class="tips">
         <strong>⚠️ 使用说明：</strong><br>
         1. 手机和电脑连接同一 WiFi<br>
-        2. 手机浏览器打开此页面<br>
+        2. 用 <strong>Chrome 浏览器</strong>打开此页面<br>
         3. 点击"开始采集"并授权传感器<br>
         4. 保持手机屏幕常亮<br>
-        5. 电脑端仪表盘同步查看实时数据<br>
-        <br><strong>📱 Android/小米注意：</strong>系统浏览器可能禁用传感器API，请<strong>使用 Chrome 浏览器</strong>打开此页面（在应用商店搜索 Chrome 安装即可）。<br>
-        <br><strong>💡 iOS注意：</strong>需 iOS 12.2+，首次使用需点击按钮授权 DeviceMotion
+        <br><strong>🔧 如果显示"无数据"：</strong><br>
+        Chrome 在 HTTP 下会禁用传感器。解决方法：<br>
+        1. 地址栏输入 <strong>chrome://flags</strong><br>
+        2. 搜索 <strong>unsafely-treat-insecure-origin-as-secure</strong><br>
+        3. 填入 <strong>http://192.168.10.131:5000</strong><br>
+        4. 设为 <strong>Enabled</strong> → 点底部 Relaunch<br>
+        5. 重新打开此页面即可
+        <br><br><strong>💡 iOS注意：</strong>需 iOS 12.2+，Safari 可直接用
     </div>
 
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
@@ -242,6 +247,15 @@
                 case 'connected': badge.classList.add('status-connected'); break;
                 case 'streaming': badge.className = 'status-badge status-streaming'; break;
             }
+        }
+
+        function showToast(msg, type) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;bottom:20px;left:10px;right:10px;padding:12px;border-radius:8px;color:white;font-size:0.8rem;z-index:9999;text-align:center;line-height:1.5;';
+            toast.style.background = type === 'error' ? '#e74c3c' : (type === 'success' ? '#27ae60' : '#3498db');
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
         }
 
         function toggleStream() {
@@ -292,6 +306,7 @@
             updateStatus('streaming', '采集中...');
             document.getElementById('btnStart').textContent = '停止采集';
             document.getElementById('btnStart').classList.add('streaming');
+            startDataCheck();
         }
 
         function stopStreaming() {
@@ -321,6 +336,13 @@
             const rot = event.rotationRate;
 
             if (!acc || !rot) return;
+
+            // 标记收到真实数据
+            if (!dataReceived) {
+                dataReceived = true;
+                if (dataCheckTimer) clearTimeout(dataCheckTimer);
+                updateStatus('streaming', '采集中...');
+            }
 
             // 更新显示
             document.getElementById('accX').textContent = acc.x ? acc.x.toFixed(2) : '0.00';
@@ -372,37 +394,42 @@
             });
         }
 
-        // 检测传感器支持情况
+        // 传感器检测：不前置禁用按钮，点击后尝试获取数据
         window.addEventListener('load', () => {
-            const btn = document.getElementById('btnStart');
             const badge = document.getElementById('statusBadge');
 
             if (typeof DeviceMotionEvent === 'undefined') {
-                btn.disabled = true;
-                btn.textContent = '传感器不可用';
                 badge.textContent = '浏览器不支持传感器API';
                 badge.className = 'status-badge status-disconnected';
                 return;
             }
 
-            // 进一步检测：尝试监听看是否能触发（某些浏览器API存在但被禁用）
-            let motionDetected = false;
-            const testHandler = () => { motionDetected = true; };
-            window.addEventListener('devicemotion', testHandler, { once: true });
-
-            setTimeout(() => {
-                window.removeEventListener('devicemotion', testHandler);
-                if (!motionDetected) {
-                    // API存在但无数据 → 可能是HTTP限制或权限问题
-                    badge.textContent = '传感器被禁用，请用Chrome浏览器';
-                    badge.className = 'status-badge status-connecting';
-                    // 不禁用按钮，让用户尝试点击
-                } else {
-                    badge.textContent = '传感器检测通过';
-                    badge.className = 'status-badge status-connected';
-                }
-            }, 2000);
+            // 检测是否为安全上下文（HTTPS/localhost）
+            if (!window.isSecureContext) {
+                badge.textContent = 'HTTP连接 — 需配置Chrome';
+                badge.className = 'status-badge status-connecting';
+            } else {
+                badge.textContent = '传感器就绪';
+                badge.className = 'status-badge status-connected';
+            }
         });
+
+        // 点击开始后检测是否有真实数据
+        let dataReceived = false;
+        let dataCheckTimer = null;
+
+        function startDataCheck() {
+            dataReceived = false;
+            if (dataCheckTimer) clearTimeout(dataCheckTimer);
+
+            // 3秒后检查是否收到传感器数据
+            dataCheckTimer = setTimeout(() => {
+                if (!dataReceived) {
+                    showToast('未收到传感器数据！请在Chrome地址栏输入 chrome://flags/#unsafely-treat-insecure-origin-as-secure 添加 ' + window.location.origin + ' 到白名单', 'error');
+                    updateStatus('connecting', '无数据 — 需配置Chrome');
+                }
+            }, 3000);
+        }
 
         // 防止屏幕休眠（部分浏览器支持）
         if ('wakeLock' in navigator) {

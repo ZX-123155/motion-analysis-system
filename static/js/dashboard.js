@@ -189,6 +189,13 @@ function connectSocket() {
         if (data.source === 'mobile') {
             el.textContent = '📱 手机实时数据';
             el.style.color = '#27ae60';
+            // 手机连接成功，关闭弹窗并更新状态
+            const modal = document.getElementById('real-mode-modal');
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+                setStreamStatus(true, true);
+                showToast('手机传感器已连接！', 'success');
+            }
         } else {
             el.textContent = '💻 模拟数据';
             el.style.color = '#7f8c8d';
@@ -305,7 +312,9 @@ function updateChart() {
 }
 
 // ====== 控制按钮 ======
-function startStream() {
+
+// 演示模式：模拟数据流
+function startDemo() {
     if (!state.socket || !state.socket.connected) {
         showToast('未连接到服务器', 'error');
         return;
@@ -316,22 +325,66 @@ function startStream() {
 
     state.socket.emit('start_stream', { activity_sequence: activities });
 
-    document.getElementById('btn-start').disabled = true;
+    document.getElementById('btn-demo').disabled = true;
+    document.getElementById('btn-real').disabled = true;
     document.getElementById('btn-stop').disabled = false;
     setStreamStatus(true, true);
 
-    // 清空旧数据
+    clearData();
+    showToast('演示模式启动 — 模拟数据流', 'info');
+}
+
+// 实测模式：等待手机连接
+function startRealMode() {
+    if (!state.socket || !state.socket.connected) {
+        showToast('未连接到服务器', 'error');
+        return;
+    }
+
+    const modal = document.getElementById('real-mode-modal');
+    const urlEl = document.getElementById('mobile-url');
+    const statusEl = document.getElementById('real-mode-status');
+
+    const host = window.location.hostname;
+    const port = window.location.port;
+    urlEl.textContent = `http://${host}:${port}/mobile`;
+    statusEl.textContent = '等待手机连接...';
+    statusEl.style.color = '#f39c12';
+
+    modal.style.display = 'flex';
+    document.getElementById('btn-demo').disabled = true;
+    document.getElementById('btn-real').disabled = true;
+    document.getElementById('btn-stop').disabled = false;
+
+    clearData();
+    showToast('实测模式 — 请在手机上打开采集页面', 'info');
+}
+
+function exitRealMode() {
+    document.getElementById('real-mode-modal').style.display = 'none';
+    document.getElementById('btn-demo').disabled = false;
+    document.getElementById('btn-real').disabled = false;
+    document.getElementById('btn-stop').disabled = true;
+    showToast('已退出实测模式', 'info');
+}
+
+// 停止所有数据流
+function stopAll() {
+    if (!state.socket) return;
+    state.socket.emit('stop_stream');
+    state.socket.emit('mobile_disconnect');
+
+    document.getElementById('btn-demo').disabled = false;
+    document.getElementById('btn-real').disabled = false;
+    document.getElementById('btn-stop').disabled = true;
+    document.getElementById('real-mode-modal').style.display = 'none';
+    setStreamStatus(true, false);
+}
+
+function clearData() {
     state.sensorData = { acc_x: [], acc_y: [], acc_z: [], gyro_x: [], gyro_y: [], gyro_z: [], labels: [] };
     state.dataCount = 0;
     if (state.pathLine) state.pathLine.setLatLngs([]);
-}
-
-function stopStream() {
-    if (!state.socket) return;
-    state.socket.emit('stop_stream');
-
-    document.getElementById('btn-start').disabled = false;
-    document.getElementById('btn-stop').disabled = true;
 }
 
 // ====== 辅助函数 ======

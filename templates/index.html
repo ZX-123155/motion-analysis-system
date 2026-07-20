@@ -84,12 +84,17 @@
 
         <!-- 底部控制栏 -->
         <footer class="control-bar">
-            <button id="btn-start" class="btn btn-primary" onclick="startStream()">
-                &#9654; 开始实时数据流
-            </button>
-            <button id="btn-stop" class="btn btn-danger" onclick="stopStream()" disabled>
-                &#9632; 停止
-            </button>
+            <div class="mode-group">
+                <button id="btn-demo" class="btn btn-primary" onclick="startDemo()">
+                    &#9654; 演示模式
+                </button>
+                <button id="btn-real" class="btn btn-success" onclick="startRealMode()">
+                    &#128242; 实测模式
+                </button>
+                <button id="btn-stop" class="btn btn-danger" onclick="stopAll()" disabled>
+                    &#9632; 停止
+                </button>
+            </div>
             <select id="activity-select" class="select-control">
                 <option value="walking,running">全部运动类型</option>
                 <option value="walking">仅走路</option>
@@ -97,6 +102,18 @@
             </select>
             <span class="data-counter" id="data-counter">数据点: 0</span>
         </footer>
+
+        <!-- 实测模式提示框 -->
+        <div id="real-mode-modal" class="modal" style="display:none">
+            <div class="modal-content">
+                <h3>&#128242; 实测模式 — 手机连接</h3>
+                <p>请在手机浏览器打开以下地址：</p>
+                <div class="qr-url" id="mobile-url">--</div>
+                <p class="modal-tip">手机和电脑需连接同一 WiFi</p>
+                <p class="modal-tip" id="real-mode-status">等待手机连接...</p>
+                <button class="btn btn-danger" onclick="exitRealMode()">取消</button>
+            </div>
+        </div>
     </div>
 
     <!-- 消息提示 -->
