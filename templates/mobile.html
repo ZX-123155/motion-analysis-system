@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>运动数据采集 - Mobile Sensor v5</title>
+    <title>运动数据采集 - Mobile Sensor v6</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -157,7 +157,7 @@
 <body>
     <div class="header">
         <h1>📱 运动传感器采集</h1>
-        <p>通过手机浏览器实时采集IMU+GPS数据 <span style="color:#27ae60;font-weight:700">v5</span></p>
+        <p>通过手机浏览器实时采集IMU+GPS数据 <span style="color:#27ae60;font-weight:700">v6</span></p>
         <div class="status-badge status-disconnected" id="statusBadge">未连接</div>
     </div>
 
@@ -200,7 +200,7 @@
     </div>
 
     <div class="conn-info">
-        <div>服务器地址</div>
+        <div>电脑端仪表盘地址</div>
         <div class="url" id="serverUrl">--</div>
     </div>
 
@@ -253,8 +253,8 @@
         let gpsWatchId = null;
         let lastMotionEvent = null;
 
-        // 显示服务器URL
-        document.getElementById('serverUrl').textContent = window.location.origin + '/mobile';
+        // 显示电脑端仪表盘地址
+        document.getElementById('serverUrl').textContent = window.location.origin;
 
         // WebSocket事件
         socket.on('connect', () => {
