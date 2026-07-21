@@ -631,6 +631,10 @@ def _train_on_collected_data():
     from preprocessing import SensorDataProcessor
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.preprocessing import StandardScaler, LabelEncoder
+    from sklearn.metrics import confusion_matrix, f1_score
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
     import joblib as jl
 
     socketio.emit("status", {"message": "开始训练模型..."})
@@ -681,10 +685,54 @@ def _train_on_collected_data():
             random_state=42, n_jobs=-1,
         )
         clf.fit(X_scaled, y_enc)
+        y_pred = clf.predict(X_scaled)
         train_acc = clf.score(X_scaled, y_enc)
         print(f"[Train] Random Forest 训练完成，训练集准确率: {train_acc:.2%}")
 
-        # 5. 更新全局模型
+        # 5. 生成混淆矩阵和特征重要性图
+        figures_dir = Path(__file__).parent.parent / "static" / "figures"
+        figures_dir.mkdir(parents=True, exist_ok=True)
+
+        target_names = le_new.classes_
+
+        # ---- 混淆矩阵 ----
+        cm = confusion_matrix(y_enc, y_pred)
+        fig, ax = plt.subplots(figsize=(8, 6))
+        im = ax.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
+        fig.colorbar(im, ax=ax)
+        ax.set(xticks=np.arange(len(target_names)),
+               yticks=np.arange(len(target_names)),
+               xticklabels=target_names, yticklabels=target_names,
+               title="Confusion Matrix (Collected Data)",
+               ylabel="True Label", xlabel="Predicted Label")
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        thresh = cm.max() / 2.0
+        for i in range(cm.shape[0]):
+            for j in range(cm.shape[1]):
+                ax.text(j, i, str(cm[i, j]), ha="center", va="center",
+                        color="white" if cm[i, j] > thresh else "black")
+        fig.tight_layout()
+        fig.savefig(figures_dir / "confusion_matrix.png", dpi=150)
+        plt.close(fig)
+
+        # ---- 特征重要性 ----
+        importances = clf.feature_importances_
+        top_n = min(20, len(feature_names_new))
+        indices = np.argsort(importances)[::-1][:top_n]
+        fig2, ax2 = plt.subplots(figsize=(10, 6))
+        ax2.barh(range(top_n), importances[indices][::-1], align="center")
+        ax2.set_yticks(range(top_n))
+        ax2.set_yticklabels([feature_names_new[i] for i in reversed(indices)], fontsize=8)
+        ax2.set_xlabel("Feature Importance")
+        ax2.set_title(f"Top {top_n} Feature Importances (Collected Data)")
+        fig2.tight_layout()
+        fig2.savefig(figures_dir / "feature_importance.png", dpi=150)
+        plt.close(fig2)
+
+        print(f"[Train] 混淆矩阵: {figures_dir / 'confusion_matrix.png'}")
+        print(f"[Train] 特征重要性: {figures_dir / 'feature_importance.png'}")
+
+        # 6. 更新全局模型
         global classifier, scaler, label_encoder, feature_names, processor
         classifier = clf
         scaler = scaler_new
@@ -692,18 +740,26 @@ def _train_on_collected_data():
         feature_names = feature_names_new
         processor = processor_local
 
-        # 6. 保存模型
+        # 7. 保存模型 + 指标
         jl.dump(classifier, MODEL_DIR / "classifier.pkl")
         jl.dump(scaler, MODEL_DIR / "scaler.pkl")
         jl.dump(label_encoder, MODEL_DIR / "label_encoder.pkl")
         jl.dump(feature_names, MODEL_DIR / "feature_names.pkl")
+
+        metrics = {
+            "accuracy": round(float(train_acc), 4),
+            "f1_macro": round(float(f1_score(y_enc, y_pred, average="macro", zero_division=0)), 4),
+            "f1_weighted": round(float(f1_score(y_enc, y_pred, average="weighted", zero_division=0)), 4),
+        }
+        with open(MODEL_DIR / "metrics.json", "w") as f:
+            json.dump(metrics, f, indent=2)
 
         # 保存采集数据到 raw 目录（方便查看）
         raw_df.to_csv(DATA_DIR / "raw" / "collected_raw.csv", index=False)
         features_df.to_csv(DATA_DIR / "processed" / "collected_features.csv", index=False)
 
         activity_counts = raw_df["label"].value_counts().to_dict()
-        msg = f"训练完成！训练集准确率 {train_acc:.2%}，共 {len(X)} 个窗口"
+        msg = f"训练完成！准确率 {train_acc:.2%}，共 {len(X)} 个窗口"
         print(f"[Train] {msg}")
         socketio.emit("status", {"message": msg})
         socketio.emit("train_result", {
