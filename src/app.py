@@ -294,14 +294,24 @@ def handle_start_stream(data=None):
                     # 步频估计
                     if "acc_magnitude" in window_df.columns:
                         acc_mag = window_df["acc_magnitude"].values
-                        n = len(acc_mag)
-                        fft_vals = np.abs(fft(acc_mag))[:n // 2]
-                        freqs = fftfreq(n, 1 / 50)[:n // 2]
-                        mask = (freqs >= 0.5) & (freqs <= 5.0)
-                        if np.any(mask):
-                            stream_state["step_freq"] = float(freqs[mask][np.argmax(fft_vals[mask])])
-                        else:
+                        # 静止检测：加速度方差太小 → 没有周期性运动，步频归零
+                        if np.var(acc_mag) < 0.3:
                             stream_state["step_freq"] = 0
+                        else:
+                            n = len(acc_mag)
+                            fft_vals = np.abs(fft(acc_mag))[:n // 2]
+                            freqs = fftfreq(n, 1 / 50)[:n // 2]
+                            mask = (freqs >= 0.5) & (freqs <= 5.0)
+                            if np.any(mask):
+                                peak = np.max(fft_vals[mask])
+                                noise = np.mean(fft_vals[mask])
+                                # 主频必须明显高于噪声基线才有效
+                                if peak > noise * 2.0:
+                                    stream_state["step_freq"] = float(freqs[mask][np.argmax(fft_vals[mask])])
+                                else:
+                                    stream_state["step_freq"] = 0
+                            else:
+                                stream_state["step_freq"] = 0
 
                     # 仅保留最近的数据
                     stream_state["buffer"] = stream_state["buffer"][-256:]
@@ -476,12 +486,18 @@ def handle_mobile_sensor_data(data):
         step_freq = 0
         if len(window_data) >= 64:
             acc_mag_vals = np.array([s["acc_magnitude"] for s in window_data])
-            n = len(acc_mag_vals)
-            fft_vals = np.abs(fft(acc_mag_vals))[:n // 2]
-            freqs = fftfreq(n, 1 / 50)[:n // 2]
-            mask = (freqs >= 0.5) & (freqs <= 5.0)
-            if np.any(mask):
-                step_freq = float(freqs[mask][np.argmax(fft_vals[mask])])
+            # 静止检测：加速度方差太小 → 没有周期性运动，步频归零
+            if np.var(acc_mag_vals) >= 0.3:
+                n = len(acc_mag_vals)
+                fft_vals = np.abs(fft(acc_mag_vals))[:n // 2]
+                freqs = fftfreq(n, 1 / 50)[:n // 2]
+                mask = (freqs >= 0.5) & (freqs <= 5.0)
+                if np.any(mask):
+                    peak = np.max(fft_vals[mask])
+                    noise = np.mean(fft_vals[mask])
+                    # 主频必须明显高于噪声基线才有效
+                    if peak > noise * 2.0:
+                        step_freq = float(freqs[mask][np.argmax(fft_vals[mask])])
 
         # 广播给所有仪表盘客户端
         socketio.emit("activity_update", {
