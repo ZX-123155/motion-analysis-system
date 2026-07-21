@@ -11,8 +11,10 @@ build/
 .eggs/
 data/raw/
 data/processed/
+data/collected/
 models/
 static/figures/
+运行结果截图/
 .env
 *.log
 .DS_Store
