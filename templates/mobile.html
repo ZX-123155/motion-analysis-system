@@ -150,7 +150,6 @@
         .btn-predict:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
         .btn-predict.predicting {
             background: linear-gradient(135deg, #e74c3c, #c0392b);
-            animation: pulse 0.6s infinite;
         }
 
         /* ====== 传感器显示 ====== */
@@ -174,6 +173,19 @@
         .sensor-card .value.x { color: #e74c3c; }
         .sensor-card .value.y { color: #2ecc71; }
         .sensor-card .value.z { color: #3498db; }
+
+        /* ====== GPS 定位 ====== */
+        .gps-card {
+            width: 100%; max-width: 380px;
+            background: #1a1a2e; border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 4px;
+        }
+        .gps-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 3px 0; font-size: 0.75rem;
+        }
+        .gps-label { color: #7f8c8d; }
+        .gps-value { color: #3498db; font-family: 'Courier New', monospace; }
 
         /* ====== 提示 ====== */
         .tips {
@@ -265,6 +277,27 @@
         </div>
     </div>
 
+    <!-- ====== GPS 定位 ====== -->
+    <div class="section-label">📍 GPS 定位</div>
+    <div class="gps-card" id="gpsCard">
+        <div class="gps-row">
+            <span class="gps-label">坐标</span>
+            <span class="gps-value" id="gpsCoord">--</span>
+        </div>
+        <div class="gps-row">
+            <span class="gps-label">速度</span>
+            <span class="gps-value" id="gpsSpeed">--</span>
+        </div>
+        <div class="gps-row">
+            <span class="gps-label">方向</span>
+            <span class="gps-value" id="gpsHeading">--</span>
+        </div>
+        <div class="gps-row">
+            <span class="gps-label">精度</span>
+            <span class="gps-value" id="gpsAccuracy">--</span>
+        </div>
+    </div>
+
     <div class="tips">
         <strong>📋 两种模式：</strong><br>
         <strong style="color:#3498db">数据采集：</strong>按活动按钮→做动作→停止→四点全采完→训练→再切实时预测<br>
@@ -289,6 +322,7 @@
         let lastSendTime = 0;
         let dataReceived = false;
         let dataCheckTimer = null;
+        let gpsWatchId = null;
 
         // ====== DOM 引用 ======
         const activityBtns = {
@@ -470,6 +504,7 @@
 
             socket.emit('start_collection', { activity });
             window.addEventListener('devicemotion', handleMotion);
+            startGPS();
 
             activityBtns[activity].btn.classList.add('collecting');
             btnStop.disabled = false;
@@ -491,6 +526,7 @@
 
             collecting = false;
             window.removeEventListener('devicemotion', handleMotion);
+            stopGPS();
             if (dataCheckTimer) clearTimeout(dataCheckTimer);
 
             const act = currentActivity;
@@ -536,6 +572,7 @@
             // 走原来的实时预测管线
             socket.emit('mobile_connect');
             window.addEventListener('devicemotion', handleMotion);
+            startGPS();
 
             btnPredict.textContent = '⏹ 停止预测';
             btnPredict.classList.add('predicting');
@@ -562,6 +599,7 @@
 
             predicting = false;
             window.removeEventListener('devicemotion', handleMotion);
+            stopGPS();
             if (dataCheckTimer) clearTimeout(dataCheckTimer);
 
             socket.emit('mobile_disconnect');
@@ -576,6 +614,53 @@
 
             setStatus('connected', '已停止预测');
             socket.emit('get_collection_status'); // 刷新采集按钮状态
+        }
+
+        // ====== GPS 定位 ======
+        function startGPS() {
+            if (!navigator.geolocation) {
+                document.getElementById('gpsCoord').textContent = '不支持GPS';
+                return;
+            }
+            gpsWatchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    const speed = pos.coords.speed || 0;
+                    const heading = pos.coords.heading || 0;
+                    const acc = pos.coords.accuracy || 0;
+
+                    document.getElementById('gpsCoord').textContent =
+                        `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                    document.getElementById('gpsSpeed').textContent =
+                        `${speed.toFixed(1)} m/s`;
+                    document.getElementById('gpsHeading').textContent =
+                        heading ? `${heading.toFixed(0)}°` : '--';
+                    document.getElementById('gpsAccuracy').textContent =
+                        acc ? `±${acc.toFixed(0)}m` : '--';
+
+                    // 实时预测模式下同时推送 GPS 给服务器更新仪表盘地图
+                    if (predicting) {
+                        socket.emit('mobile_gps_update', {
+                            lat, lon, speed, heading,
+                        });
+                    }
+                },
+                (err) => {
+                    const el = document.getElementById('gpsCoord');
+                    if (err.code === 1) el.textContent = '权限被拒绝';
+                    else if (err.code === 2) el.textContent = '信号不可用';
+                    else el.textContent = 'GPS错误';
+                },
+                { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+            );
+        }
+
+        function stopGPS() {
+            if (gpsWatchId !== null) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
+            }
         }
 
         // ====== 传感器处理（根据模式分发到不同事件） ======
