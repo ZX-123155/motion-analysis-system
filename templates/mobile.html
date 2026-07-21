@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>运动数据采集 - Mobile Sensor v6</title>
+    <title>运动数据采集</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -18,154 +18,184 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            padding: 16px;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .header h1 { font-size: 1.2rem; color: #3498db; }
-        .header p { font-size: 0.8rem; color: #7f8c8d; margin-top: 4px; }
+        .header { text-align: center; margin-bottom: 12px; }
+        .header h1 { font-size: 1.1rem; color: #3498db; }
+        .header .subtitle { font-size: 0.7rem; color: #7f8c8d; margin-top: 2px; }
 
         /* 连接状态 */
-        .status-badge {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin: 10px 0;
+        .status-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 12px; font-size: 0.8rem;
         }
-        .status-disconnected { background: #e74c3c; color: white; }
-        .status-connecting { background: #f39c12; color: white; }
-        .status-connected { background: #27ae60; color: white; }
-        .status-streaming { background: #3498db; color: white; animation: pulse 1.5s infinite; }
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #e74c3c; flex-shrink: 0;
+        }
+        .status-dot.connected { background: #27ae60; }
+        .status-dot.collecting { background: #3498db; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
-        /* 主按钮 */
-        .btn-start {
-            width: 200px;
-            padding: 18px;
-            border: none;
-            border-radius: 30px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            box-shadow: 0 4px 20px rgba(52,152,219,0.4);
-            margin: 15px 0;
-        }
-        .btn-start:active { transform: scale(0.95); }
-        .btn-start.streaming {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            box-shadow: 0 4px 20px rgba(231,76,60,0.4);
-        }
-        .btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* 传感器数据显示 */
-        .sensor-grid {
-            width: 100%;
-            max-width: 380px;
+        /* 活动按钮网格 */
+        .btn-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            margin-top: 15px;
+            width: 100%; max-width: 380px;
+            margin-bottom: 10px;
         }
 
-        .sensor-card {
-            background: #1a1a2e;
-            border-radius: 12px;
-            padding: 14px;
+        .act-btn {
+            position: relative;
+            padding: 18px 12px 14px;
+            border: 2px solid transparent;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s;
+            color: white;
             text-align: center;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .act-btn:active { transform: scale(0.96); }
+        .act-btn .emoji { font-size: 1.5rem; display: block; margin-bottom: 2px; }
+        .act-btn .count { font-size: 0.7rem; font-weight: 400; opacity: 0.8; margin-top: 2px; }
+        .act-btn.collecting {
+            border-color: white;
+            box-shadow: 0 0 20px currentColor;
+            animation: btnGlow 0.8s infinite alternate;
+        }
+        @keyframes btnGlow {
+            from { box-shadow: 0 0 12px currentColor; }
+            to   { box-shadow: 0 0 28px currentColor; }
+        }
+
+        .btn-walk     { background: linear-gradient(135deg, #27ae60, #1e8449); }
+        .btn-station  { background: linear-gradient(135deg, #7f8c8d, #5d6d7e); }
+        .btn-run      { background: linear-gradient(135deg, #e67e22, #d35400); }
+        .btn-jump     { background: linear-gradient(135deg, #8e44ad, #6c3483); }
+
+        /* 停止 & 训练按钮 */
+        .action-row {
+            display: flex; gap: 10px;
+            width: 100%; max-width: 380px;
+            margin-bottom: 10px;
+        }
+
+        .btn-stop, .btn-train {
+            flex: 1; padding: 14px;
+            border: none; border-radius: 12px;
+            font-size: 0.95rem; font-weight: 700; cursor: pointer;
+            color: white; transition: all 0.25s;
+        }
+        .btn-stop:active, .btn-train:active { transform: scale(0.96); }
+        .btn-stop {
+            background: linear-gradient(135deg, #c0392b, #96281b);
+            box-shadow: 0 3px 12px rgba(192,57,43,0.4);
+        }
+        .btn-stop:disabled, .btn-train:disabled {
+            opacity: 0.35; cursor: not-allowed;
+        }
+        .btn-train {
+            background: linear-gradient(135deg, #f1c40f, #d4ac0d);
+            color: #1a1a2e;
+            box-shadow: 0 3px 12px rgba(241,196,15,0.5);
+        }
+        .btn-train.training {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            animation: pulse 0.6s infinite;
+        }
+
+        /* 进度提示 */
+        .progress-bar-wrap {
+            width: 100%; max-width: 380px;
+            height: 6px; background: #1a1a2e; border-radius: 3px;
+            margin-bottom: 12px; overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%; background: #27ae60;
+            border-radius: 3px; transition: width 0.4s;
+        }
+        .progress-text {
+            font-size: 0.7rem; color: #7f8c8d;
+            text-align: center; margin-bottom: 8px;
+        }
+
+        /* 传感器显示 */
+        .sensor-grid {
+            width: 100%; max-width: 380px;
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 8px; margin-top: 8px;
+        }
+        .sensor-card {
+            background: #1a1a2e; border-radius: 10px;
+            padding: 10px; text-align: center;
         }
         .sensor-card .label {
-            font-size: 0.7rem;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            font-size: 0.65rem; color: #7f8c8d;
+            text-transform: uppercase; letter-spacing: 1px;
         }
         .sensor-card .value {
-            font-size: 1.6rem;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            margin-top: 4px;
+            font-size: 1.3rem; font-weight: 700;
+            font-family: 'Courier New', monospace; margin-top: 2px;
         }
         .sensor-card .value.x { color: #e74c3c; }
         .sensor-card .value.y { color: #2ecc71; }
         .sensor-card .value.z { color: #3498db; }
 
-        /* GPS信息 */
-        .gps-info {
-            width: 100%;
-            max-width: 380px;
-            background: #1a1a2e;
-            border-radius: 12px;
-            padding: 14px;
-            margin-top: 10px;
-            text-align: center;
-            font-size: 0.8rem;
-        }
-        .gps-info .coord {
-            font-family: 'Courier New', monospace;
-            color: #3498db;
-            font-size: 0.85rem;
-            margin-top: 4px;
-        }
-
-        /* 连接信息 */
-        .conn-info {
-            width: 100%;
-            max-width: 380px;
-            margin-top: 15px;
-            padding: 12px;
-            background: #1a1a2e;
-            border-radius: 10px;
-            font-size: 0.75rem;
-            color: #7f8c8d;
-            text-align: center;
-        }
-        .conn-info .url { color: #3498db; font-weight: 600; word-break: break-all; }
-
         /* 提示 */
         .tips {
-            width: 100%;
-            max-width: 380px;
-            margin-top: 20px;
-            padding: 12px;
-            background: #2c3e50;
-            border-radius: 10px;
-            font-size: 0.75rem;
-            color: #bdc3c7;
-            line-height: 1.6;
+            width: 100%; max-width: 380px;
+            margin-top: 12px; padding: 10px;
+            background: #2c3e50; border-radius: 8px;
+            font-size: 0.7rem; color: #bdc3c7; line-height: 1.5;
         }
         .tips strong { color: #f39c12; }
-
-        .sample-counter {
-            font-size: 0.7rem;
-            color: #7f8c8d;
-            margin-top: 5px;
-        }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📱 运动传感器采集</h1>
-        <p>通过手机浏览器实时采集IMU+GPS数据 <span style="color:#27ae60;font-weight:700">v6</span></p>
-        <div class="status-badge status-disconnected" id="statusBadge">未连接</div>
+        <h1>📱 标注数据采集</h1>
+        <div class="subtitle">按下按钮 → 做对应动作 → 点停止</div>
     </div>
 
-    <button class="btn-start" id="btnStart" onclick="toggleStream()">
-        开始采集
-    </button>
+    <div class="status-row">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">未连接服务器</span>
+    </div>
 
-    <div class="sample-counter" id="sampleCounter">已采集: 0 个样本</div>
+    <div class="progress-text" id="progressText">完成 0/4 种运动</div>
+    <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
+    </div>
+
+    <div class="btn-grid">
+        <button class="act-btn btn-walk" id="btnWalk" onclick="startCollect('walking')">
+            <span class="emoji">🚶</span>走路
+            <div class="count" id="cntWalk">0 条</div>
+        </button>
+        <button class="act-btn btn-station" id="btnStation" onclick="startCollect('stationary')">
+            <span class="emoji">🛑</span>静止
+            <div class="count" id="cntStation">0 条</div>
+        </button>
+        <button class="act-btn btn-run" id="btnRun" onclick="startCollect('running')">
+            <span class="emoji">🏃</span>跑步
+            <div class="count" id="cntRun">0 条</div>
+        </button>
+        <button class="act-btn btn-jump" id="btnJump" onclick="startCollect('jumping')">
+            <span class="emoji">⤴</span>跳跃
+            <div class="count" id="cntJump">0 条</div>
+        </button>
+    </div>
+
+    <div class="action-row">
+        <button class="btn-stop" id="btnStop" onclick="doStop()" disabled>⏹ 停止采集</button>
+        <button class="btn-train" id="btnTrain" onclick="doTrain()" disabled>⚡ 训练模型</button>
+    </div>
 
     <div class="sensor-grid">
         <div class="sensor-card">
@@ -194,241 +224,261 @@
         </div>
     </div>
 
-    <div class="gps-info" id="gpsInfo">
-        <div class="label">📍 GPS 位置（默认：湾谷科技园A8）</div>
-        <div class="coord" id="gpsCoord">31.338200, 121.509800</div>
-    </div>
-
-    <div class="conn-info">
-        <div>电脑端仪表盘地址</div>
-        <div class="url" id="serverUrl">--</div>
-    </div>
-
     <div class="tips">
-        <strong>⚠️ 使用说明：</strong><br>
-        1. 手机和电脑连接同一 WiFi<br>
-        2. 用 <strong>Chrome 浏览器</strong>打开此页面<br>
-        3. 点击"开始采集"并授权传感器<br>
-        4. 保持手机屏幕常亮<br>
-        <br><strong>📍 GPS/北斗定位：</strong><br>
-        现代手机已自动使用<strong>北斗+GPS+GLONASS</strong>多星座<br>
-        如无法定位：<br>
-        &nbsp;&nbsp;• 确保手机设置 → 定位服务 →<strong>高精度模式</strong><br>
-        &nbsp;&nbsp;• 到<strong>室外或窗口</strong>开阔处<br>
-        &nbsp;&nbsp;• Chrome 需允许位置权限（弹窗点允许）<br>
-        定位后显示精度(绿色&lt;30m / 黄色30-100m / 红色&gt;100m)
-        <br><br><strong>🔧 如果传感器无数据：</strong><br>
-        Chrome 在 HTTP 下会禁用传感器。解决方法：<br>
-        1. 地址栏输入 <strong>chrome://flags</strong><br>
-        2. 搜索 <strong>unsafely-treat-insecure-origin-as-secure</strong><br>
-        3. 填入 <strong>http://192.168.10.131:5000</strong><br>
-        4. 设为 <strong>Enabled</strong> → 点底部 Relaunch
+        <strong>📋 使用步骤：</strong><br>
+        1. 确认上方状态为 "<span style="color:#27ae60">已连接</span>"<br>
+        2. 按一个活动按钮 → 立刻开始做该动作<br>
+        3. 每个动作建议持续 <strong>10~30 秒</strong>，采集越多越准<br>
+        4. 按 <strong>停止</strong> 保存当前数据<br>
+        5. 四个都采完后按 <strong>⚡训练模型</strong><br>
+        <br><strong>⚠️ Chrome 无传感器数据：</strong><br>
+        chrome://flags → 搜索 unsafely-treat<br>
+        → 添加 <strong id="insecureUrl">http://192.168.x.x:5000</strong> → Enabled
     </div>
 
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
-        // 快速断开检测：服务端心跳 + 客户端超时
         const socket = io({
             pingInterval: 3000,
             pingTimeout: 5000,
             reconnection: false,
         });
 
-        let serverHeartbeatTimer = null;
-        const HEARTBEAT_TIMEOUT = 5000; // 5秒没收到心跳就判定断开
+        // ====== 状态变量 ======
+        let collecting = false;
+        let currentActivity = null;
+        let motionPermissionGranted = false;
+        let dataReceived = false;
+        let dataCheckTimer = null;
+        let isTraining = false;
+        let lastSendTime = 0;
 
-        function resetServerHeartbeat() {
-            if (serverHeartbeatTimer) clearTimeout(serverHeartbeatTimer);
-            serverHeartbeatTimer = setTimeout(() => {
-                // 超时没收到心跳，服务器挂了
-                updateStatus('disconnected', '服务器已断开');
-                showToast('⚠ 服务器已断开！请重启app.py', 'error');
-                if (isStreaming) stopStreaming();
+        // ====== DOM 引用 ======
+        const activityBtns = {
+            walking:    { btn: document.getElementById('btnWalk'),    cnt: document.getElementById('cntWalk') },
+            stationary: { btn: document.getElementById('btnStation'), cnt: document.getElementById('cntStation') },
+            running:    { btn: document.getElementById('btnRun'),     cnt: document.getElementById('cntRun') },
+            jumping:    { btn: document.getElementById('btnJump'),    cnt: document.getElementById('cntJump') },
+        };
+        const btnStop  = document.getElementById('btnStop');
+        const btnTrain = document.getElementById('btnTrain');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        // 提示里的 insecure url
+        document.getElementById('insecureUrl').textContent = window.location.origin;
+
+        // ====== 连接管理 ======
+        let heartbeatTimer = null;
+        const HEARTBEAT_TIMEOUT = 5000;
+
+        function resetHeartbeat() {
+            if (heartbeatTimer) clearTimeout(heartbeatTimer);
+            heartbeatTimer = setTimeout(() => {
+                setStatus('disconnected', '服务器已断开');
+                if (collecting) doStop();
                 socket.disconnect();
             }, HEARTBEAT_TIMEOUT);
         }
-        let isStreaming = false;
-        let sampleCount = 0;
-        let motionPermissionGranted = false;
-        let gpsWatchId = null;
-        let lastMotionEvent = null;
 
-        // 显示电脑端仪表盘地址
-        document.getElementById('serverUrl').textContent = window.location.origin;
-
-        // WebSocket事件
         socket.on('connect', () => {
-            updateStatus('connecting', '已连接服务器');
-            resetServerHeartbeat();
+            setStatus('connected', '已连接服务器');
+            resetHeartbeat();
+            socket.emit('get_collection_status');
         });
 
-        // 服务端心跳 — 超时未收到则判定断开
-        socket.on('server_heartbeat', () => {
-            resetServerHeartbeat();
-        });
-
-        socket.on('mobile_status', (data) => {
-            if (data.status === 'connected') {
-                updateStatus('connected', '传感器就绪');
-            }
-        });
+        socket.on('server_heartbeat', () => resetHeartbeat());
 
         socket.on('disconnect', () => {
-            if (serverHeartbeatTimer) clearTimeout(serverHeartbeatTimer);
-            updateStatus('disconnected', '服务器已断开');
-            showToast('⚠ 服务器连接已断开！请重启app.py', 'error');
-            if (isStreaming) stopStreaming();
+            if (heartbeatTimer) clearTimeout(heartbeatTimer);
+            setStatus('disconnected', '服务器已断开');
+            if (collecting) doStop();
         });
 
         socket.on('connect_error', () => {
-            updateStatus('disconnected', '连接失败');
-            showToast('无法连接服务器，请确认app.py是否运行', 'error');
+            setStatus('disconnected', '连接失败');
         });
 
-        function updateStatus(state, text) {
-            const badge = document.getElementById('statusBadge');
-            badge.textContent = text;
-            badge.className = 'status-badge';
-            switch(state) {
-                case 'disconnected': badge.classList.add('status-disconnected'); break;
-                case 'connecting': badge.classList.add('status-connecting'); break;
-                case 'connected': badge.classList.add('status-connected'); break;
-                case 'streaming': badge.className = 'status-badge status-streaming'; break;
+        // 接收服务器推送的进度和状态
+        socket.on('collection_progress', (data) => updateCounts(data.counts));
+        socket.on('collection_stopped', (data) => {
+            updateCounts(data.counts);
+            checkTrainReady(data.counts);
+        });
+        socket.on('collection_status', (data) => {
+            updateCounts(data.counts);
+            checkTrainReady(data.counts);
+        });
+
+        socket.on('train_result', (data) => {
+            isTraining = false;
+            btnTrain.textContent = '⚡ 训练模型';
+            btnTrain.classList.remove('training');
+            if (data.success) {
+                showToast(`✅ 训练完成！准确率 ${(data.accuracy*100).toFixed(0)}%，${data.windows} 个窗口`);
+                setStatus('connected', '模型就绪');
+            } else {
+                showToast('❌ 训练失败: ' + (data.error || '未知错误'), true);
+            }
+        });
+
+        socket.on('status', (data) => {
+            if (data.message && !data.message.startsWith('手机端')) {
+                setStatus('connected', data.message);
+            }
+        });
+
+        // ====== UI 函数 ======
+        function setStatus(state, text) {
+            statusDot.className = 'status-dot';
+            if (state === 'connected') statusDot.classList.add('connected');
+            else if (state === 'collecting') statusDot.classList.add('collecting');
+            statusText.textContent = text;
+        }
+
+        function updateCounts(counts) {
+            for (const [act, cnt] of Object.entries(counts)) {
+                if (activityBtns[act]) {
+                    activityBtns[act].cnt.textContent = cnt + ' 条';
+                }
             }
         }
 
-        function showToast(msg, type) {
+        function updateProgress(counts) {
+            const total = ['walking','stationary','running','jumping'].filter(a => (counts[a]||0) > 0).length;
+            progressBar.style.width = (total / 4 * 100) + '%';
+            progressText.textContent = `完成 ${total}/4 种运动`;
+        }
+
+        function checkTrainReady(counts) {
+            updateProgress(counts);
+            const allDone = ['walking','stationary','running','jumping'].every(a => (counts[a]||0) > 0);
+            btnTrain.disabled = !allDone || isTraining || collecting;
+            if (allDone && !collecting) {
+                btnTrain.style.opacity = '1';
+            }
+        }
+
+        function showToast(msg, isError) {
             const toast = document.createElement('div');
             toast.style.cssText = 'position:fixed;bottom:20px;left:10px;right:10px;padding:12px;border-radius:8px;color:white;font-size:0.8rem;z-index:9999;text-align:center;line-height:1.5;';
-            toast.style.background = type === 'error' ? '#e74c3c' : (type === 'success' ? '#27ae60' : '#3498db');
+            toast.style.background = isError ? '#e74c3c' : '#27ae60';
             toast.textContent = msg;
             document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 5000);
+            setTimeout(() => toast.remove(), 6000);
         }
 
-        function toggleStream() {
-            if (isStreaming) {
-                stopStreaming();
-            } else {
-                startStreaming();
+        // ====== 采集控制 ======
+        async function startCollect(activity) {
+            if (collecting) {
+                showToast('请先停止当前采集再开始新的');
+                return;
             }
-        }
+            if (isTraining) {
+                showToast('训练进行中，请等待完成');
+                return;
+            }
 
-        async function startStreaming() {
-            // iOS DeviceMotion权限请求（必须由用户手势触发）
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            // iOS 权限
+            if (typeof DeviceMotionEvent !== 'undefined' &&
+                typeof DeviceMotionEvent.requestPermission === 'function') {
                 try {
-                    const permission = await DeviceMotionEvent.requestPermission();
-                    if (permission !== 'granted') {
-                        alert('需要传感器权限才能采集数据');
+                    const perm = await DeviceMotionEvent.requestPermission();
+                    if (perm !== 'granted') {
+                        showToast('需要传感器权限才能采集数据', true);
                         return;
                     }
                     motionPermissionGranted = true;
                 } catch (e) {
                     console.error('权限请求失败:', e);
-                    // Android设备不需要权限，直接继续
                 }
             } else {
-                // Android 或旧版iOS，直接使用
                 motionPermissionGranted = true;
             }
 
+            currentActivity = activity;
+            collecting = true;
+            dataReceived = false;
+
             // 通知服务器
-            socket.emit('mobile_connect');
+            socket.emit('start_collection', { activity });
 
-            // 注册传感器事件
+            // 注册传感器
             window.addEventListener('devicemotion', handleMotion);
-            window.addEventListener('deviceorientation', handleOrientation);
 
-            // 启动GPS
-            if (navigator.geolocation) {
-                gpsWatchId = navigator.geolocation.watchPosition(
-                    handleGPS,
-                    (err) => {
-                        const gpsEl = document.getElementById('gpsCoord');
-                        switch(err.code) {
-                            case 1: // PERMISSION_DENIED
-                                gpsEl.textContent = 'GPS权限被拒绝 — 请在浏览器设置中允许位置权限';
-                                gpsEl.style.color = '#e74c3c';
-                                break;
-                            case 2: // POSITION_UNAVAILABLE
-                                gpsEl.textContent = 'GPS信号不可用 — 请到室外或窗口开阔处';
-                                gpsEl.style.color = '#f39c12';
-                                break;
-                            case 3: // TIMEOUT
-                                gpsEl.textContent = 'GPS定位超时 — 重试中...';
-                                gpsEl.style.color = '#f39c12';
-                                break;
-                            default:
-                                gpsEl.textContent = 'GPS错误: ' + err.message;
-                        }
-                    },
-                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
-                );
-            } else {
-                document.getElementById('gpsCoord').textContent = '浏览器不支持GPS';
-                document.getElementById('gpsCoord').style.color = '#e74c3c';
-            }
+            // UI
+            activityBtns[activity].btn.classList.add('collecting');
+            btnStop.disabled = false;
+            btnTrain.disabled = true;
+            setStatus('collecting', `正在采集: ${activity}`);
 
-            isStreaming = true;
-            sampleCount = 0;
-            updateStatus('streaming', '采集中...');
-            document.getElementById('btnStart').textContent = '停止采集';
-            document.getElementById('btnStart').classList.add('streaming');
-            startDataCheck();
+            // 3秒后检查是否收到数据
+            if (dataCheckTimer) clearTimeout(dataCheckTimer);
+            dataCheckTimer = setTimeout(() => {
+                if (!dataReceived) {
+                    const origin = window.location.origin;
+                    showToast('未收到传感器数据！请在 Chrome 地址栏输入 chrome://flags/#unsafely-treat-insecure-origin-as-secure 添加 ' + origin + ' 到白名单，设为 Enabled 后点 Relaunch', true);
+                    setStatus('disconnected', '无传感器数据');
+                }
+            }, 3000);
         }
 
-        function stopStreaming() {
-            isStreaming = false;
+        function doStop() {
+            if (!collecting) return;
 
+            collecting = false;
             window.removeEventListener('devicemotion', handleMotion);
-            window.removeEventListener('deviceorientation', handleOrientation);
+            if (dataCheckTimer) clearTimeout(dataCheckTimer);
 
-            if (gpsWatchId !== null) {
-                navigator.geolocation.clearWatch(gpsWatchId);
-                gpsWatchId = null;
+            const act = currentActivity;
+            socket.emit('stop_collection');
+
+            if (act && activityBtns[act]) {
+                activityBtns[act].btn.classList.remove('collecting');
             }
-
-            socket.emit('mobile_disconnect');
-            updateStatus('connected', '已停止');
-            document.getElementById('btnStart').textContent = '开始采集';
-            document.getElementById('btnStart').classList.remove('streaming');
+            btnStop.disabled = true;
+            currentActivity = null;
+            setStatus('connected', '已停止');
+            showToast(`✅ ${act} 数据已保存`);
         }
 
-        let lastSendTime = 0;
-        const SEND_INTERVAL = 20; // 每20ms发送一次（约50Hz）
+        function doTrain() {
+            if (isTraining || collecting) return;
+            if (!confirm('将用采集到的真实数据重新训练模型，覆盖原有模拟模型。确定？')) return;
 
+            isTraining = true;
+            btnTrain.textContent = '⏳ 训练中...';
+            btnTrain.classList.add('training');
+            btnTrain.disabled = true;
+            socket.emit('train_model');
+        }
+
+        // ====== 传感器处理 ======
         function handleMotion(event) {
-            if (!isStreaming) return;
+            if (!collecting) return;
 
             const acc = event.accelerationIncludingGravity;
             const rot = event.rotationRate;
-
             if (!acc || !rot) return;
 
-            // 标记收到真实数据
-            if (!dataReceived) {
-                dataReceived = true;
-                if (dataCheckTimer) clearTimeout(dataCheckTimer);
-                updateStatus('streaming', '采集中...');
-            }
+            dataReceived = true;
 
             // 更新显示
             document.getElementById('accX').textContent = acc.x ? acc.x.toFixed(2) : '0.00';
             document.getElementById('accY').textContent = acc.y ? acc.y.toFixed(2) : '0.00';
             document.getElementById('accZ').textContent = acc.z ? acc.z.toFixed(2) : '0.00';
-            // rotationRate: alpha=z, beta=x, gamma=y (deg/s)
-            document.getElementById('gyroX').textContent = rot.beta  ? rot.beta.toFixed(2)  : '0.00';
+            document.getElementById('gyroX').textContent = rot.beta  ? rot.beta.toFixed(2) : '0.00';
             document.getElementById('gyroY').textContent = rot.gamma ? rot.gamma.toFixed(2) : '0.00';
             document.getElementById('gyroZ').textContent = rot.alpha ? rot.alpha.toFixed(2) : '0.00';
 
-            // 控制发送频率
+            // 控制发送频率 ~50Hz
             const now = Date.now();
-            if (now - lastSendTime < SEND_INTERVAL) return;
+            if (now - lastSendTime < 20) return;
             lastSendTime = now;
 
-            // 发送到服务器（旋转角度deg/s转rad/s）
-            socket.emit('mobile_sensor_data', {
+            socket.emit('collect_sensor_data', {
                 acc_x: acc.x || 0,
                 acc_y: acc.y || 0,
                 acc_z: acc.z || 0,
@@ -437,82 +487,23 @@
                 gyro_z: (rot.alpha || 0) * Math.PI / 180,
                 timestamp: now / 1000,
             });
-
-            sampleCount++;
-            if (sampleCount % 50 === 0) {
-                document.getElementById('sampleCounter').textContent = `已采集: ${sampleCount} 个样本`;
-            }
         }
 
-        function handleOrientation(event) {
-            // 备用：使用deviceorientation做补充
-            lastMotionEvent = event;
-        }
-
-        function handleGPS(position) {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            const speed = position.coords.speed || 0;
-            const heading = position.coords.heading || 0;
-            const accuracy = position.coords.accuracy || 0;
-
-            const el = document.getElementById('gpsCoord');
-            let accText = accuracy > 0 ? ` 精度: ±${accuracy.toFixed(0)}m` : '';
-            el.textContent =
-                `${lat.toFixed(6)}, ${lon.toFixed(6)} | 速度: ${speed.toFixed(1)} m/s${accText}`;
-            el.style.color = accuracy <= 30 ? '#27ae60' : (accuracy <= 100 ? '#f39c12' : '#e74c3c');
-
-            socket.emit('mobile_gps_update', {
-                lat: lat,
-                lon: lon,
-                speed: speed,
-                heading: heading,
-            });
-        }
-
-        // 传感器检测：不前置禁用按钮，点击后尝试获取数据
+        // ====== 初始检测 ======
         window.addEventListener('load', () => {
-            const badge = document.getElementById('statusBadge');
-
             if (typeof DeviceMotionEvent === 'undefined') {
-                badge.textContent = '浏览器不支持传感器API';
-                badge.className = 'status-badge status-disconnected';
-                return;
-            }
-
-            // 检测是否为安全上下文（HTTPS/localhost）
-            if (!window.isSecureContext) {
-                badge.textContent = 'HTTP连接 — 需配置Chrome';
-                badge.className = 'status-badge status-connecting';
+                setStatus('disconnected', '浏览器不支持传感器');
+            } else if (!window.isSecureContext) {
+                setStatus('disconnected', 'HTTP — 需配置 Chrome');
             } else {
-                badge.textContent = '传感器就绪';
-                badge.className = 'status-badge status-connected';
+                setStatus('connected', '传感器就绪');
             }
         });
 
-        // 点击开始后检测是否有真实数据
-        let dataReceived = false;
-        let dataCheckTimer = null;
-
-        function startDataCheck() {
-            dataReceived = false;
-            if (dataCheckTimer) clearTimeout(dataCheckTimer);
-
-            // 3秒后检查是否收到传感器数据
-            dataCheckTimer = setTimeout(() => {
-                if (!dataReceived) {
-                    showToast('未收到传感器数据！请在Chrome地址栏输入 chrome://flags/#unsafely-treat-insecure-origin-as-secure 添加 ' + window.location.origin + ' 到白名单', 'error');
-                    updateStatus('connecting', '无数据 — 需配置Chrome');
-                }
-            }, 3000);
-        }
-
-        // 防止屏幕休眠（部分浏览器支持）
+        // 防止屏幕休眠
         if ('wakeLock' in navigator) {
             document.addEventListener('click', async () => {
-                try {
-                    await navigator.wakeLock.request('screen');
-                } catch (e) {}
+                try { await navigator.wakeLock.request('screen'); } catch(e) {}
             }, { once: true });
         }
     </script>

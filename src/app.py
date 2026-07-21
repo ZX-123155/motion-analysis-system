@@ -91,6 +91,17 @@ mobile_state = {
     "prediction_cooldown": 1.0,
 }
 
+# 数据采集模式状态（标注数据收集）
+COLLECTED_DIR = Path(__file__).parent.parent / "data" / "collected"
+COLLECTED_DIR.mkdir(parents=True, exist_ok=True)
+
+collection_state = {
+    "active": False,
+    "current_activity": None,
+    "sample_counts": {"walking": 0, "stationary": 0, "running": 0, "jumping": 0},
+    "buffer": [],
+}
+
 
 def load_model():
     """加载预训练模型"""
@@ -498,6 +509,211 @@ def handle_mobile_gps(data):
             "lon": mobile_state["lon"],
             "speed": float(data.get("speed", 0)),
         })
+
+
+# ====== 数据采集模式：手机端标注数据收集 ======
+
+@socketio.on("start_collection")
+def handle_start_collection(data):
+    """开始采集某个运动类型的标注数据"""
+    activity = data.get("activity")
+    if activity not in ["walking", "stationary", "running", "jumping"]:
+        emit("error_msg", {"message": "无效的运动类型"})
+        return
+
+    collection_state["active"] = True
+    collection_state["current_activity"] = activity
+    collection_state["buffer"] = []
+
+    print(f"[Collect] 开始采集: {activity}")
+    socketio.emit("status", {"message": f"手机端正在采集: {activity}"})
+    emit("collection_started", {"activity": activity})
+
+
+@socketio.on("collect_sensor_data")
+def handle_collect_sensor_data(data):
+    """接收带活动标签的传感器原始数据并缓存"""
+    if not collection_state["active"]:
+        return
+
+    activity = collection_state["current_activity"]
+    try:
+        sample = {
+            "timestamp": data.get("timestamp", time.time()),
+            "acc_x": float(data.get("acc_x", 0)),
+            "acc_y": float(data.get("acc_y", 0)),
+            "acc_z": float(data.get("acc_z", 0)),
+            "gyro_x": float(data.get("gyro_x", 0)),
+            "gyro_y": float(data.get("gyro_y", 0)),
+            "gyro_z": float(data.get("gyro_z", 0)),
+            "label": activity,
+        }
+    except (ValueError, TypeError) as e:
+        print(f"[Collect] 数据格式错误: {e}")
+        return
+
+    collection_state["buffer"].append(sample)
+    collection_state["sample_counts"][activity] += 1
+
+    # 每 500 个点推送一次计数给手机端更新 UI
+    total = collection_state["sample_counts"][activity]
+    if total % 500 == 0:
+        emit("collection_progress", {
+            "activity": activity,
+            "count": total,
+            "counts": collection_state["sample_counts"],
+        })
+
+
+@socketio.on("stop_collection")
+def handle_stop_collection():
+    """停止当前采集，把缓存数据写入 CSV"""
+    if not collection_state["active"] or collection_state["current_activity"] is None:
+        emit("error_msg", {"message": "当前没有进行中的采集"})
+        return
+
+    activity = collection_state["current_activity"]
+    count = len(collection_state["buffer"])
+
+    if count > 0:
+        df = pd.DataFrame(collection_state["buffer"])
+        filepath = COLLECTED_DIR / f"{activity}.csv"
+
+        # 追加模式：如果之前采过同类型，拼在一起
+        if filepath.exists():
+            existing = pd.read_csv(filepath)
+            df = pd.concat([existing, df], ignore_index=True)
+
+        df.to_csv(filepath, index=False)
+        print(f"[Collect] {activity} 保存 {count} 条 → {filepath.name}（累计 {len(df)} 条）")
+    else:
+        print(f"[Collect] {activity} 本次无数据，跳过保存")
+
+    collection_state["active"] = False
+    collection_state["current_activity"] = None
+    collection_state["buffer"] = []
+
+    socketio.emit("status", {"message": f"手机端 {activity} 采集完成，共 {collection_state['sample_counts'][activity]} 条"})
+    emit("collection_stopped", {
+        "activity": activity,
+        "counts": collection_state["sample_counts"],
+    })
+
+
+@socketio.on("get_collection_status")
+def handle_get_collection_status():
+    """查询各活动已采集的数据量"""
+    emit("collection_status", {
+        "counts": collection_state["sample_counts"],
+        "active": collection_state["active"],
+        "current_activity": collection_state["current_activity"],
+    })
+
+
+def _train_on_collected_data():
+    """用采集到的真实数据重新训练模型（后台线程）"""
+    from preprocessing import SensorDataProcessor
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.preprocessing import StandardScaler, LabelEncoder
+    import joblib as jl
+
+    socketio.emit("status", {"message": "开始训练模型..."})
+
+    try:
+        # 1. 加载所有采集的 CSV 文件
+        all_dfs = []
+        sample_id = 0
+        for csv_file in sorted(COLLECTED_DIR.glob("*.csv")):
+            df = pd.read_csv(csv_file)
+            if len(df) == 0:
+                continue
+            df["sample_id"] = f"collected_{sample_id:03d}"
+            all_dfs.append(df)
+            sample_id += 1
+
+        if not all_dfs:
+            socketio.emit("status", {"message": "错误：没有采集到任何数据"})
+            socketio.emit("train_result", {"success": False, "error": "没有采集到数据"})
+            return
+
+        raw_df = pd.concat(all_dfs, ignore_index=True)
+        print(f"[Train] 加载 {len(raw_df)} 条原始数据，来自 {len(all_dfs)} 个 CSV 文件")
+
+        # 2. 预处理：滤波 + 滑窗特征提取
+        processor_local = SensorDataProcessor(low_cut=0.5, high_cut=20.0)
+        features_df = processor_local.process_dataset(raw_df)
+        print(f"[Train] 特征提取完成：{features_df.shape}")
+
+        # 3. 准备训练数据
+        X = features_df.drop(columns=["label", "window_start", "window_end", "sample_id"], errors="ignore")
+        y = features_df["label"]
+
+        # 保存特征名（覆盖旧的）
+        feature_names_new = list(X.columns)
+
+        # 标准化
+        scaler_new = StandardScaler()
+        X_scaled = scaler_new.fit_transform(X)
+
+        # 标签编码
+        le_new = LabelEncoder()
+        y_enc = le_new.fit_transform(y)
+
+        # 4. 训练
+        clf = RandomForestClassifier(
+            n_estimators=100, max_depth=10, min_samples_leaf=2,
+            random_state=42, n_jobs=-1,
+        )
+        clf.fit(X_scaled, y_enc)
+        train_acc = clf.score(X_scaled, y_enc)
+        print(f"[Train] Random Forest 训练完成，训练集准确率: {train_acc:.2%}")
+
+        # 5. 更新全局模型
+        global classifier, scaler, label_encoder, feature_names, processor
+        classifier = clf
+        scaler = scaler_new
+        label_encoder = le_new
+        feature_names = feature_names_new
+        processor = processor_local
+
+        # 6. 保存模型
+        jl.dump(classifier, MODEL_DIR / "classifier.pkl")
+        jl.dump(scaler, MODEL_DIR / "scaler.pkl")
+        jl.dump(label_encoder, MODEL_DIR / "label_encoder.pkl")
+        jl.dump(feature_names, MODEL_DIR / "feature_names.pkl")
+
+        # 保存采集数据到 raw 目录（方便查看）
+        raw_df.to_csv(DATA_DIR / "raw" / "collected_raw.csv", index=False)
+        features_df.to_csv(DATA_DIR / "processed" / "collected_features.csv", index=False)
+
+        activity_counts = raw_df["label"].value_counts().to_dict()
+        msg = f"训练完成！训练集准确率 {train_acc:.2%}，共 {len(X)} 个窗口"
+        print(f"[Train] {msg}")
+        socketio.emit("status", {"message": msg})
+        socketio.emit("train_result", {
+            "success": True,
+            "accuracy": round(train_acc, 4),
+            "windows": len(X),
+            "features": len(feature_names_new),
+            "activity_counts": activity_counts,
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        socketio.emit("status", {"message": f"训练失败: {str(e)}"})
+        socketio.emit("train_result", {"success": False, "error": str(e)})
+
+
+@socketio.on("train_model")
+def handle_train_model():
+    """手机端触发：用采集数据训练模型"""
+    if classifier is not None:
+        emit("warning", {"message": "这将覆盖当前模型，确定要重新训练吗？"})
+
+    thread = threading.Thread(target=_train_on_collected_data, daemon=True)
+    thread.start()
+    emit("status", {"message": "训练已在后台启动..."})
 
 
 if __name__ == "__main__":

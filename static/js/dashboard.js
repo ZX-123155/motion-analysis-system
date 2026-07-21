@@ -64,9 +64,11 @@ function initMap() {
         zoomControl: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
+    // 使用高德地图瓦片（国内稳定可用），原 OpenStreetMap 在国内被墙
+    L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+        attribution: '&copy; 高德地图 AutoNavi',
         maxZoom: 19,
+        subdomains: ['1', '2', '3', '4'],
     }).addTo(state.map);
 
     state.pathLine = L.polyline([], {
