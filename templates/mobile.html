@@ -25,43 +25,55 @@
         .header h1 { font-size: 1.1rem; color: #3498db; }
         .header .subtitle { font-size: 0.7rem; color: #7f8c8d; margin-top: 2px; }
 
-        /* 连接状态 */
+        /* ====== 连接状态 ====== */
         .status-row {
             display: flex; align-items: center; gap: 10px;
-            margin-bottom: 12px; font-size: 0.8rem;
+            margin-bottom: 6px; font-size: 0.8rem;
         }
         .status-dot {
             width: 10px; height: 10px; border-radius: 50%;
             background: #e74c3c; flex-shrink: 0;
         }
-        .status-dot.connected { background: #27ae60; }
+        .status-dot.connected  { background: #27ae60; }
         .status-dot.collecting { background: #3498db; animation: pulse 1s infinite; }
+        .status-dot.predicting { background: #e67e22; animation: pulse 0.6s infinite; }
         @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
 
-        /* 活动按钮网格 */
+        .mode-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 0.65rem; font-weight: 700; margin-left: 4px;
+            vertical-align: middle;
+        }
+        .mode-collect { background: #2c3e50; color: #3498db; }
+        .mode-predict { background: #2c3e50; color: #e67e22; }
+
+        /* ====== 分区标题 ====== */
+        .section-label {
+            width: 100%; max-width: 380px;
+            font-size: 0.7rem; color: #7f8c8d; letter-spacing: 2px;
+            text-transform: uppercase; margin: 10px 0 6px;
+            padding-bottom: 4px; border-bottom: 1px solid #2c3e50;
+        }
+
+        /* ====== 活动按钮网格 ====== */
         .btn-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
             width: 100%; max-width: 380px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
-
         .act-btn {
             position: relative;
             padding: 18px 12px 14px;
             border: 2px solid transparent;
             border-radius: 14px;
-            font-size: 1rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.25s;
-            color: white;
-            text-align: center;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
+            font-size: 1rem; font-weight: 700; cursor: pointer;
+            transition: all 0.25s; color: white; text-align: center;
+            -webkit-tap-highlight-color: transparent; user-select: none;
         }
         .act-btn:active { transform: scale(0.96); }
+        .act-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
         .act-btn .emoji { font-size: 1.5rem; display: block; margin-bottom: 2px; }
         .act-btn .count { font-size: 0.7rem; font-weight: 400; opacity: 0.8; margin-top: 2px; }
         .act-btn.collecting {
@@ -79,13 +91,12 @@
         .btn-run      { background: linear-gradient(135deg, #e67e22, #d35400); }
         .btn-jump     { background: linear-gradient(135deg, #8e44ad, #6c3483); }
 
-        /* 停止 & 训练按钮 */
+        /* ====== 停止 & 训练 ====== */
         .action-row {
             display: flex; gap: 10px;
             width: 100%; max-width: 380px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
-
         .btn-stop, .btn-train {
             flex: 1; padding: 14px;
             border: none; border-radius: 12px;
@@ -98,7 +109,7 @@
             box-shadow: 0 3px 12px rgba(192,57,43,0.4);
         }
         .btn-stop:disabled, .btn-train:disabled {
-            opacity: 0.35; cursor: not-allowed;
+            opacity: 0.35; cursor: not-allowed; transform: none;
         }
         .btn-train {
             background: linear-gradient(135deg, #f1c40f, #d4ac0d);
@@ -110,26 +121,43 @@
             animation: pulse 0.6s infinite;
         }
 
-        /* 进度提示 */
+        /* ====== 进度条 ====== */
         .progress-bar-wrap {
             width: 100%; max-width: 380px;
-            height: 6px; background: #1a1a2e; border-radius: 3px;
-            margin-bottom: 12px; overflow: hidden;
+            height: 4px; background: #1a1a2e; border-radius: 2px;
+            margin-bottom: 6px; overflow: hidden;
         }
         .progress-bar-fill {
             height: 100%; background: #27ae60;
-            border-radius: 3px; transition: width 0.4s;
+            border-radius: 2px; transition: width 0.4s;
         }
         .progress-text {
-            font-size: 0.7rem; color: #7f8c8d;
-            text-align: center; margin-bottom: 8px;
+            font-size: 0.65rem; color: #7f8c8d;
+            text-align: center; margin-bottom: 6px;
         }
 
-        /* 传感器显示 */
+        /* ====== 实时预测按钮 ====== */
+        .btn-predict {
+            width: 100%; max-width: 380px;
+            padding: 14px; border: none; border-radius: 12px;
+            font-size: 0.95rem; font-weight: 700; cursor: pointer;
+            color: white; transition: all 0.25s;
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            box-shadow: 0 3px 12px rgba(230,126,34,0.4);
+            margin-bottom: 8px;
+        }
+        .btn-predict:active { transform: scale(0.96); }
+        .btn-predict:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+        .btn-predict.predicting {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            animation: pulse 0.6s infinite;
+        }
+
+        /* ====== 传感器显示 ====== */
         .sensor-grid {
             width: 100%; max-width: 380px;
             display: grid; grid-template-columns: 1fr 1fr;
-            gap: 8px; margin-top: 8px;
+            gap: 8px; margin-top: 4px;
         }
         .sensor-card {
             background: #1a1a2e; border-radius: 10px;
@@ -147,7 +175,7 @@
         .sensor-card .value.y { color: #2ecc71; }
         .sensor-card .value.z { color: #3498db; }
 
-        /* 提示 */
+        /* ====== 提示 ====== */
         .tips {
             width: 100%; max-width: 380px;
             margin-top: 12px; padding: 10px;
@@ -159,14 +187,18 @@
 </head>
 <body>
     <div class="header">
-        <h1>📱 标注数据采集</h1>
-        <div class="subtitle">按下按钮 → 做对应动作 → 点停止</div>
+        <h1>📱 运动数据采集</h1>
+        <div class="subtitle" id="pageSubtitle">先采集标注数据训练模型，或直接实时预测</div>
     </div>
 
+    <!-- ====== 连接状态 ====== -->
     <div class="status-row">
         <div class="status-dot" id="statusDot"></div>
         <span id="statusText">未连接服务器</span>
     </div>
+
+    <!-- ====== 模式：数据采集 ====== -->
+    <div class="section-label">📦 数据采集（标注后训练模型）</div>
 
     <div class="progress-text" id="progressText">完成 0/4 种运动</div>
     <div class="progress-bar-wrap">
@@ -193,10 +225,19 @@
     </div>
 
     <div class="action-row">
-        <button class="btn-stop" id="btnStop" onclick="doStop()" disabled>⏹ 停止采集</button>
+        <button class="btn-stop" id="btnStop" onclick="doStopCollect()" disabled>⏹ 停止采集</button>
         <button class="btn-train" id="btnTrain" onclick="doTrain()" disabled>⚡ 训练模型</button>
     </div>
 
+    <!-- ====== 模式：实时预测 ====== -->
+    <div class="section-label">📡 实时预测（跳过采集，直接推送到电脑仪表盘）</div>
+
+    <button class="btn-predict" id="btnPredict" onclick="togglePredict()" disabled>
+        ▶ 开始实时预测
+    </button>
+
+    <!-- ====== 传感器显示 ====== -->
+    <div class="section-label">📊 传感器数值</div>
     <div class="sensor-grid">
         <div class="sensor-card">
             <div class="label">加速度 X</div>
@@ -225,15 +266,11 @@
     </div>
 
     <div class="tips">
-        <strong>📋 使用步骤：</strong><br>
-        1. 确认上方状态为 "<span style="color:#27ae60">已连接</span>"<br>
-        2. 按一个活动按钮 → 立刻开始做该动作<br>
-        3. 每个动作建议持续 <strong>10~30 秒</strong>，采集越多越准<br>
-        4. 按 <strong>停止</strong> 保存当前数据<br>
-        5. 四个都采完后按 <strong>⚡训练模型</strong><br>
-        <br><strong>⚠️ Chrome 无传感器数据：</strong><br>
-        chrome://flags → 搜索 unsafely-treat<br>
-        → 添加 <strong id="insecureUrl">http://192.168.x.x:5000</strong> → Enabled
+        <strong>📋 两种模式：</strong><br>
+        <strong style="color:#3498db">数据采集：</strong>按活动按钮→做动作→停止→四点全采完→训练→再切实时预测<br>
+        <strong style="color:#e67e22">实时预测：</strong>已经有模型后直接用，跳过采集训练阶段<br>
+        <br><strong>⚠️ Chrome 无传感器：</strong><br>
+        chrome://flags → unsafely-treat → 添加 <strong id="insecureUrl">http://192.168.x.x:5000</strong> → Enabled
     </div>
 
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
@@ -245,13 +282,13 @@
         });
 
         // ====== 状态变量 ======
-        let collecting = false;
+        let collecting = false;    // 数据采集模式中
+        let predicting = false;    // 实时预测模式中
         let currentActivity = null;
-        let motionPermissionGranted = false;
-        let dataReceived = false;
-        let dataCheckTimer = null;
         let isTraining = false;
         let lastSendTime = 0;
+        let dataReceived = false;
+        let dataCheckTimer = null;
 
         // ====== DOM 引用 ======
         const activityBtns = {
@@ -260,14 +297,14 @@
             running:    { btn: document.getElementById('btnRun'),     cnt: document.getElementById('cntRun') },
             jumping:    { btn: document.getElementById('btnJump'),    cnt: document.getElementById('cntJump') },
         };
-        const btnStop  = document.getElementById('btnStop');
-        const btnTrain = document.getElementById('btnTrain');
-        const statusDot = document.getElementById('statusDot');
+        const btnStop    = document.getElementById('btnStop');
+        const btnTrain   = document.getElementById('btnTrain');
+        const btnPredict = document.getElementById('btnPredict');
+        const statusDot  = document.getElementById('statusDot');
         const statusText = document.getElementById('statusText');
-        const progressBar = document.getElementById('progressBar');
+        const progressBar  = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
 
-        // 提示里的 insecure url
         document.getElementById('insecureUrl').textContent = window.location.origin;
 
         // ====== 连接管理 ======
@@ -278,13 +315,19 @@
             if (heartbeatTimer) clearTimeout(heartbeatTimer);
             heartbeatTimer = setTimeout(() => {
                 setStatus('disconnected', '服务器已断开');
-                if (collecting) doStop();
+                doStopAll();
                 socket.disconnect();
             }, HEARTBEAT_TIMEOUT);
         }
 
+        function doStopAll() {
+            if (collecting) doStopCollect();
+            if (predicting) stopPredict();
+        }
+
         socket.on('connect', () => {
             setStatus('connected', '已连接服务器');
+            btnPredict.disabled = false;
             resetHeartbeat();
             socket.emit('get_collection_status');
         });
@@ -294,14 +337,12 @@
         socket.on('disconnect', () => {
             if (heartbeatTimer) clearTimeout(heartbeatTimer);
             setStatus('disconnected', '服务器已断开');
-            if (collecting) doStop();
+            doStopAll();
         });
 
-        socket.on('connect_error', () => {
-            setStatus('disconnected', '连接失败');
-        });
+        socket.on('connect_error', () => setStatus('disconnected', '连接失败'));
 
-        // 接收服务器推送的进度和状态
+        // 采集进度
         socket.on('collection_progress', (data) => updateCounts(data.counts));
         socket.on('collection_stopped', (data) => {
             updateCounts(data.counts);
@@ -310,35 +351,49 @@
         socket.on('collection_status', (data) => {
             updateCounts(data.counts);
             checkTrainReady(data.counts);
+            // 连接后可立即启用实时预测（如果已有模型）
+            if (!collecting && !predicting) btnPredict.disabled = false;
         });
 
+        // 训练结果
         socket.on('train_result', (data) => {
             isTraining = false;
             btnTrain.textContent = '⚡ 训练模型';
             btnTrain.classList.remove('training');
             if (data.success) {
                 showToast(`✅ 训练完成！准确率 ${(data.accuracy*100).toFixed(0)}%，${data.windows} 个窗口`);
-                setStatus('connected', '模型就绪');
+                setStatus('connected', '模型就绪 — 可开始实时预测');
             } else {
                 showToast('❌ 训练失败: ' + (data.error || '未知错误'), true);
             }
+            checkTrainReady(null);
         });
 
         socket.on('status', (data) => {
-            if (data.message && !data.message.startsWith('手机端')) {
+            if (!data.message) return;
+            if (!data.message.startsWith('手机端') && !data.message.startsWith('开始训练') && !data.message.startsWith('训练')) {
                 setStatus('connected', data.message);
+            }
+        });
+
+        // 手机端连接确认
+        socket.on('mobile_status', (data) => {
+            if (data.status === 'connected') {
+                setStatus('predicting', '实时预测中 — 查看电脑仪表盘');
             }
         });
 
         // ====== UI 函数 ======
         function setStatus(state, text) {
             statusDot.className = 'status-dot';
-            if (state === 'connected') statusDot.classList.add('connected');
-            else if (state === 'collecting') statusDot.classList.add('collecting');
+            if (state === 'connected')  statusDot.classList.add('connected');
+            if (state === 'collecting') statusDot.classList.add('collecting');
+            if (state === 'predicting') statusDot.classList.add('predicting');
             statusText.textContent = text;
         }
 
         function updateCounts(counts) {
+            if (!counts) return;
             for (const [act, cnt] of Object.entries(counts)) {
                 if (activityBtns[act]) {
                     activityBtns[act].cnt.textContent = cnt + ' 条';
@@ -347,18 +402,32 @@
         }
 
         function updateProgress(counts) {
+            if (!counts) return;
             const total = ['walking','stationary','running','jumping'].filter(a => (counts[a]||0) > 0).length;
             progressBar.style.width = (total / 4 * 100) + '%';
             progressText.textContent = `完成 ${total}/4 种运动`;
         }
 
         function checkTrainReady(counts) {
-            updateProgress(counts);
-            const allDone = ['walking','stationary','running','jumping'].every(a => (counts[a]||0) > 0);
-            btnTrain.disabled = !allDone || isTraining || collecting;
-            if (allDone && !collecting) {
-                btnTrain.style.opacity = '1';
-            }
+            if (counts) updateProgress(counts);
+            const allDone = counts
+                ? ['walking','stationary','running','jumping'].every(a => (counts[a]||0) > 0)
+                : false;
+            btnTrain.disabled = !allDone || isTraining || collecting || predicting;
+            if (allDone && !collecting && !predicting) btnTrain.style.opacity = '1';
+        }
+
+        function setButtonsDisabled(disabled, reason) {
+            // 采集模式下互斥：预测中禁用采集，采集中禁用预测
+            Object.values(activityBtns).forEach(b => b.btn.disabled = disabled);
+            btnStop.disabled = disabled;
+            btnTrain.disabled = disabled || !(
+                ['walking','stationary','running','jumping'].every(a => {
+                    const cnt = activityBtns[a].cnt.textContent.replace(' 条','');
+                    return parseInt(cnt) > 0;
+                })
+            );
+            btnPredict.disabled = disabled;
         }
 
         function showToast(msg, isError) {
@@ -370,62 +439,54 @@
             setTimeout(() => toast.remove(), 6000);
         }
 
-        // ====== 采集控制 ======
-        async function startCollect(activity) {
-            if (collecting) {
-                showToast('请先停止当前采集再开始新的');
-                return;
-            }
-            if (isTraining) {
-                showToast('训练进行中，请等待完成');
-                return;
-            }
-
-            // iOS 权限
+        async function requestMotionPermission() {
             if (typeof DeviceMotionEvent !== 'undefined' &&
                 typeof DeviceMotionEvent.requestPermission === 'function') {
                 try {
                     const perm = await DeviceMotionEvent.requestPermission();
-                    if (perm !== 'granted') {
-                        showToast('需要传感器权限才能采集数据', true);
-                        return;
-                    }
-                    motionPermissionGranted = true;
+                    return perm === 'granted';
                 } catch (e) {
                     console.error('权限请求失败:', e);
+                    return false;
                 }
-            } else {
-                motionPermissionGranted = true;
             }
+            return true; // Android 不需要权限
+        }
+
+        // ====== 模式一：数据采集 ======
+        async function startCollect(activity) {
+            if (collecting || predicting) {
+                showToast(predicting ? '请先停止实时预测' : '请先停止当前采集');
+                return;
+            }
+            if (isTraining) { showToast('训练进行中，请等待完成'); return; }
+
+            const granted = await requestMotionPermission();
+            if (!granted) { showToast('需要传感器权限', true); return; }
 
             currentActivity = activity;
             collecting = true;
             dataReceived = false;
 
-            // 通知服务器
             socket.emit('start_collection', { activity });
-
-            // 注册传感器
             window.addEventListener('devicemotion', handleMotion);
 
-            // UI
             activityBtns[activity].btn.classList.add('collecting');
             btnStop.disabled = false;
             btnTrain.disabled = true;
+            btnPredict.disabled = true;
             setStatus('collecting', `正在采集: ${activity}`);
 
-            // 3秒后检查是否收到数据
             if (dataCheckTimer) clearTimeout(dataCheckTimer);
             dataCheckTimer = setTimeout(() => {
                 if (!dataReceived) {
-                    const origin = window.location.origin;
-                    showToast('未收到传感器数据！请在 Chrome 地址栏输入 chrome://flags/#unsafely-treat-insecure-origin-as-secure 添加 ' + origin + ' 到白名单，设为 Enabled 后点 Relaunch', true);
+                    showToast('未收到传感器数据！请在 Chrome 地址栏输入 chrome://flags/#unsafely-treat-insecure-origin-as-secure，添加 ' + window.location.origin + ' 到白名单，设为 Enabled 后点 Relaunch', true);
                     setStatus('disconnected', '无传感器数据');
                 }
             }, 3000);
         }
 
-        function doStop() {
+        function doStopCollect() {
             if (!collecting) return;
 
             collecting = false;
@@ -439,13 +500,14 @@
                 activityBtns[act].btn.classList.remove('collecting');
             }
             btnStop.disabled = true;
+            btnPredict.disabled = false;
             currentActivity = null;
             setStatus('connected', '已停止');
             showToast(`✅ ${act} 数据已保存`);
         }
 
         function doTrain() {
-            if (isTraining || collecting) return;
+            if (isTraining || collecting || predicting) return;
             if (!confirm('将用采集到的真实数据重新训练模型，覆盖原有模拟模型。确定？')) return;
 
             isTraining = true;
@@ -455,10 +517,69 @@
             socket.emit('train_model');
         }
 
-        // ====== 传感器处理 ======
-        function handleMotion(event) {
-            if (!collecting) return;
+        // ====== 模式二：实时预测 ======
+        function togglePredict() {
+            if (predicting) { stopPredict(); }
+            else            { startPredict(); }
+        }
 
+        async function startPredict() {
+            if (collecting) { showToast('请先停止数据采集'); return; }
+            if (isTraining) { showToast('训练进行中，请等待完成'); return; }
+
+            const granted = await requestMotionPermission();
+            if (!granted) { showToast('需要传感器权限', true); return; }
+
+            predicting = true;
+            dataReceived = false;
+
+            // 走原来的实时预测管线
+            socket.emit('mobile_connect');
+            window.addEventListener('devicemotion', handleMotion);
+
+            btnPredict.textContent = '⏹ 停止预测';
+            btnPredict.classList.add('predicting');
+            btnPredict.disabled = false;
+
+            // 采集按钮互斥禁用
+            Object.values(activityBtns).forEach(b => b.btn.disabled = true);
+            btnStop.disabled = true;
+            btnTrain.disabled = true;
+
+            setStatus('predicting', '实时预测中...');
+
+            if (dataCheckTimer) clearTimeout(dataCheckTimer);
+            dataCheckTimer = setTimeout(() => {
+                if (!dataReceived) {
+                    showToast('未收到传感器数据！请在 Chrome 地址栏输入 chrome://flags/#unsafely-treat-insecure-origin-as-secure，添加 ' + window.location.origin + ' 到白名单，设为 Enabled 后点 Relaunch', true);
+                    setStatus('disconnected', '无传感器数据');
+                }
+            }, 3000);
+        }
+
+        function stopPredict() {
+            if (!predicting) return;
+
+            predicting = false;
+            window.removeEventListener('devicemotion', handleMotion);
+            if (dataCheckTimer) clearTimeout(dataCheckTimer);
+
+            socket.emit('mobile_disconnect');
+
+            btnPredict.textContent = '▶ 开始实时预测';
+            btnPredict.classList.remove('predicting');
+            btnPredict.disabled = false;
+
+            // 恢复采集按钮
+            Object.values(activityBtns).forEach(b => b.btn.disabled = false);
+            btnStop.disabled = true;
+
+            setStatus('connected', '已停止预测');
+            socket.emit('get_collection_status'); // 刷新采集按钮状态
+        }
+
+        // ====== 传感器处理（根据模式分发到不同事件） ======
+        function handleMotion(event) {
             const acc = event.accelerationIncludingGravity;
             const rot = event.rotationRate;
             if (!acc || !rot) return;
@@ -478,7 +599,7 @@
             if (now - lastSendTime < 20) return;
             lastSendTime = now;
 
-            socket.emit('collect_sensor_data', {
+            const payload = {
                 acc_x: acc.x || 0,
                 acc_y: acc.y || 0,
                 acc_z: acc.z || 0,
@@ -486,17 +607,27 @@
                 gyro_y: (rot.gamma || 0) * Math.PI / 180,
                 gyro_z: (rot.alpha || 0) * Math.PI / 180,
                 timestamp: now / 1000,
-            });
+            };
+
+            // 按模式分发到不同 Socket.IO 事件
+            if (collecting) {
+                socket.emit('collect_sensor_data', payload);
+            } else if (predicting) {
+                socket.emit('mobile_sensor_data', payload);
+            }
         }
 
         // ====== 初始检测 ======
         window.addEventListener('load', () => {
             if (typeof DeviceMotionEvent === 'undefined') {
                 setStatus('disconnected', '浏览器不支持传感器');
+                btnPredict.disabled = true;
             } else if (!window.isSecureContext) {
                 setStatus('disconnected', 'HTTP — 需配置 Chrome');
+                btnPredict.disabled = true;
             } else {
                 setStatus('connected', '传感器就绪');
+                btnPredict.disabled = false;
             }
         });
 
